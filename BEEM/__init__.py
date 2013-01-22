@@ -7,6 +7,9 @@ Created on Sat Dec  8 15:19:09 2012
 import pylab
 import numpy as np
 import scipy as sp
+from PySide import QtGui
+import sys
+
 
 def normplot(x,*arg,**kwarg):
     y=sp.special.erfinv(np.linspace(-1,1,len(x)+2)[1:-1:])
@@ -29,3 +32,13 @@ def cdfplot(x,*arg,**kwarg):
     y=np.linspace(0,1,len(x))
     sx=np.sort(x)
     pylab.plot(sx,y,*arg,**kwarg)
+
+def main():
+    app = QtGui.QApplication(sys.argv)
+    wid = QtGui.QMainWindow()
+    wid.resize(1000, 700)
+    wid.setWindowTitle('pyBEEM')
+    wid.setCentralWidget(UI.IV_UI())
+    wid.show()
+    sys.exit(app.exec_())
+    

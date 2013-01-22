@@ -4,11 +4,15 @@ Created on Sat Jan  5 00:44:47 2013
 
 @author: Guillaume Poulin
 """
-
+import _pureC
+#import cfunction
 import numpy as np
 import scipy.optimize as op
 import pylab
-import scipy.constants as constants
+import multiprocessing as mp
+import time
+#from scipy import weave
+
 
 MODE = {'fwd':0, 'bwd':1} #Enum to store if in the foward or backward mode
 
@@ -56,17 +60,19 @@ class BEESFit(object):
         self.data = []
         self.add_data(data)
         self.filter = None #no filter
-        self._i_beem = None
         self.trans_a = None
-        self.trans_r = None
         self.barrier_height = None
         self.barrier_height_max=-0.5
         self.noise = None
-        self.combine = lambda x: np.mean(x, 0)
-        self.method = BEESFit.bell_kaiser_v
+        self.combine = combine_mean
+        self.method = _pureC.bell_kaiser_v
         self.bias_max=np.max(self.bias)
         self.bias_min=np.min(self.bias)
+        self.positive=self.bias_min>0
         self.updated = False
+        self.barrier_height_err=None
+        self.trans_a_err=None
+        self.noise_err=None
         
     @property
     def bias(self):
@@ -129,16 +135,33 @@ class BEESFit(object):
             combined=self.data[0].i_beem
         
         if self.filter==None:
-            self._i_beem=combined
+            return combined
         else:
-            self._i_beem = self.filter(combined)
-        return self._i_beem
+            return self.filter(combined)
+        
+    @property
+    def i_tunnel(self):
+        if not(self.data):
+            return None
+        
+        if len(self.data)>1:
+            combined=self.combine([t.i_tunnel for t in self.data])
+        else:
+            combined=self.data[0].i_tunnel
+        
+        if self.filter==None:
+            i_tunnel=combined
+        else:
+            i_tunnel = self.filter(combined)
+        return i_tunnel
+    
+    @property
+    def trans_r(self):
+        return self.trans_a/np.mean(self.i_tunnel)
     
     def reset(self):
-        self._i_beem = None
         self.barrier_height = None
         self.trans_a = None
-        self.trans_r = None
         self.noise = None
         self.updated = False
     
@@ -150,46 +173,88 @@ class BEESFit(object):
             for bees in data:
                  self.data.append(bees)
     
-    def fit(self, barrier_height = -0.8, trans_a = 0, noise = 1e-9):
+    def fit(self, barrier_height = -0.8, trans_a = 0.001, noise = 1e-9):
+        
+        if barrier_height<self.bias_min or barrier_height>self.bias_max:
+            barrier_height=(self.bias_min+self.bias_max)/2
         
         try:
-            popt, pconv = op.curve_fit(self.method, self.bias_fitted, 
-                                   self.i_beem_fitted, 
-                                   [barrier_height, trans_a, noise])
-        
-                        
+            popt, pconv = op.curve_fit(self.method, self.bias_fitted, self.i_beem_fitted,
+                                   [barrier_height, trans_a, noise],maxfev=2000)
+            
             self.barrier_height = popt[0]
             self.trans_a = popt[1]
             self.noise = popt[2]
+            self.barrier_height_err=np.sqrt(pconv[0,0])
+            self.trans_a_err=np.sqrt(pconv[1,1])
+            self.noise_err=np.sqrt(pconv[2,2])
         except:
             self.barrier_height = None
             self.trans_a = None
-            self.noise = None            
+            self.noise = None
+            #self.barrier_height_err=np.inf
+            #self.trans_a_err=np.inf
+            #self.noise_err=np.inf
             
         
     def export_plot(self,fig=1):
-        pylab.figure(fig)
-        pylab.plot(self.bias, self.i_beem,'.k')
-        pylab.plot(self.bias_fitted,self.i_beem_estimated,'r')
+        fig=pylab.figure(fig,figsize=(6,6),dpi=120)
+        pylab.rc('text', usetex=True)
+        p1,=pylab.plot(self.bias, self.i_beem/np.mean(self.i_tunnel),'ow')
+        pylab.hold(True)
+        p2,=pylab.plot(self.bias_fitted,self.i_beem_estimated/np.mean(self.i_tunnel),'r',linewidth=2)       
         pylab.xlabel('Bias (V)')
-        pylab.ylabel('BEEM Current (A)')
+        pylab.ylabel(r'BEEM Current, $\frac{I_b}{I_T}$')
+        power=int(np.floor(np.log10(self.trans_r)))
+        val=self.trans_r/10**power
+        ypos=np.mean(pylab.ylim())
+        _,xpos=pylab.xlim()
+        t=pylab.text(xpos,ypos,
+                        r'\begin{tabular}{rcl} Barrier Height:&$%0.3f$&eV\\R:&$%0.3f\times10^{%d}$&eV$^{-1}$\end{tabular}'%(np.abs(self.barrier_height),val,power),
+                        horizontalalignment='right',verticalalignment='center')
+        pylab.legend(['BEES data','Fitted data'],loc=1,numpoints=1)        
+        return fig,t
     
-    def auto_range_fit(self, barrier_height = -0.8, trans_a = 1.0, 
+    def auto_range_fit(self, barrier_height = -0.8, trans_a = 0.001, 
                        noise = 1e-9, auto_range = 0.4, tol = 0.001):
         self.barrier_height = barrier_height
         self.trans_a = trans_a
         self.noise = noise
         
+        
+        if barrier_height<0:
+            self.bias_min=barrier_height-auto_range
+        else:
+            self.bias_max=barrier_height+auto_range
+        
+        if self.bias_max<0:
+            lim=min(self.bias)
+        else:
+            lim=max(self.bias)
+            
+        
         for i in range(0,10):
             self.fit(self.barrier_height, self.trans_a, self.noise)
-            if self.barrier_height==None:
-                return
-            if self.barrier_height>self.bias_max:
-                self.barrier_height=self.bias_max            
-            self.bias_min=(self.barrier_height+barrier_height)/2-auto_range
-            if np.abs(barrier_height-self.barrier_height)<tol:
-                return
-            barrier_height=self.barrier_height
+            
+            #if barrier not found look further
+            if self.barrier_height==None or np.abs(self.barrier_height_err/self.barrier_height)>0.04:
+                self.barrier_height = barrier_height
+                self.trans_a = trans_a
+                self.noise = noise
+                if self.bias_max<0:
+                    self.bias_min=max(self.bias_min-auto_range,lim)
+                else:
+                    self.bias_max=min(self.bias_max+auto_range,lim)
+            else:
+                if np.abs(barrier_height-self.barrier_height)<tol:
+                    return
+                if self.barrier_height>self.bias_max or self.barrier_height<self.bias_min:
+                    self.barrier_height=(self.bias_max+self.bias_min)/2
+                if self.barrier_height<0:
+                    self.bias_min=(2*self.barrier_height+barrier_height)/3-auto_range
+                else:
+                    self.bias_max=(2*self.barrier_height+barrier_height)/3+auto_range
+                barrier_height=self.barrier_height
             
         
     @property
@@ -197,19 +262,7 @@ class BEESFit(object):
       return r_squared(self.i_beem_fitted,self.i_beem_estimated)
         
     
-    @staticmethod
-    def bell_kaiser_v(bias, barrier_height, trans_a, noise):
-        i_beem = np.zeros(bias.shape[0])
-        x=bias < barrier_height
-        i_beem[x] = -trans_a*(bias[x] - barrier_height)**2  / bias[x]
-        return i_beem + noise
-    
-    @staticmethod
-    def bell_kaiser(bias, barrier_height, trans_a, noise):
-        i_beem = np.ones(bias.shape[0]) * noise
-        i_beem[bias < barrier_height] = (-trans_a * 
-            (bias[bias < barrier_height] - barrier_height)**2 ) + noise
-        return i_beem
+
     
 class Grid(Experiment):
     
@@ -228,137 +281,37 @@ class Grid(Experiment):
         self.beesfit=[BEESFit(self.bees[i][j])
                     for i in range(0,len(self.bees)) 
                     for j in range(0,len(self.bees[i]))]
+                    
+    def fit(self,threads=1):
         
-        for beesfit in self.beesfit:
-            beesfit.auto_range_fit()
-            #beesfit.__getattribute__(self.fit_method)()
-
-class IV(Experiment):
-
-    class model():
-        SchottkyRicharson=0
-    
-    def __init__(self):
-        self._fitted=[False,False]
-        self.model=IV.model.SchottkyRicharson
-        self._T=300.
-        self._A=1.1e6
-        self._W=np.pi*2.5e-4**2
-        self._Vbh=[0.8,0.8]
-        self._n=[1,1]        
-        self._Vmax=[0.15,0.15]
-        self._Vmin=[0.03,0.03]
-        self._rsquared=[0,0]
-        self._KbT=constants.physical_constants['Boltzmann constant in eV/K'][0]*self._T
-        self._Is=self._A*self._W*self._T**2
-        self.mode=MODE['fwd']
-        self.filter=None
-
-    @property
-    def Vbh(self):
-        if not(self._fitted[self.mode]):
-            self.fit()   
-        return self._Vbh[self.mode]
-    
-    @property
-    def n(self):
-        if not(self._fitted[self.mode]):
-            self.fit()   
-        return self._n[self.mode]
-    
-    @property
-    def rsquared(self):
-        if not(self._fitted[self.mode]):
-            self.fit()   
-        return self._rsquared[self.mode]
-
-    @property
-    def Vmax(self):
-        return self._Vmax[self.mode]
-
-    @property
-    def Vmin(self):
-        return self._Vmin[self.mode]
-        
-    @Vmax.setter
-    def Vmax(self,value):
-        self._Vmax[self.mode]=value
-        self._fitted[self.mode]=False
-    
-    @Vmin.setter
-    def Vmin(self,value):
-        self._Vmin[self.mode]=value
-        self._fitted[self.mode]=False
-        
-    @property
-    def T(self):
-        return self._T
-        
-    @T.setter
-    def T(self,value):
-        self._T=value
-        self._fitted=[False,False]
-        
-    @property
-    def A(self):
-        return self._A
-        
-    @A.setter
-    def A(self,value):
-        self._A=value
-        self._fitted=[False,False]
-    
-    @property
-    def W(self):
-        return self._W
-        
-    @W.setter
-    def W(self,value):
-        self._W=value
-        self._fitted=[False,False]
-    
-    @property
-    def V(self):
-        return self._V[:,self.mode]
-        
-    @property
-    def I(self):
-        I=self._I[:,self.mode]
-        if self.filter==None:
-            return I
+        t1=time.time()
+        if threads==1:     
+            for x in self.beesfit:
+                x.auto_range_fit()
         else:
-            return self.filter(I)
-
+            p=mp.Pool(threads)
+            beesfit=p.map(fit_para,self.beesfit)
+            p.close()            
+            for i in range(0,len(beesfit)):
+                for x in beesfit[i].keys():
+                    self.beesfit[i].__setattr__(x,beesfit[i][x])
+        t2=time.time()
+        print t2-t1
         
-    def fit(self,Vbh_init=None,n_init=None):
-        m=self.mode
-        if Vbh_init==None:
-            Vbh_init=self._Vbh[m]
-        if n_init==None:
-            n_init=1
-            
-        V=self.V[np.logical_and(self.V<self.Vmax,self.V>self.Vmin)]
-        if V.size<2:
-            return
-        I=self.I[np.logical_and(self.V<self.Vmax,self.V>self.Vmin)]
-        popt,pconv=op.curve_fit(self._model_fit,V,np.log(np.abs(I)),[Vbh_init,n_init])
-        self._Vbh[m]=popt[0]
-        self._n[m]=popt[1]
-        self._rsquared[m]=r_squared(np.log(np.abs(I)),self._model_fit(V,popt[0],popt[1]))
-        self._fitted[m]=True
         
-    def _model_fit(self,V,Vbh,n):
-        return np.log(np.abs(IV.schottky_richardson(V,Vbh,n,self._Is,self._KbT)))
-        
-
-    def Ifitted(self,V):
-        return IV.schottky_richardson(V,self.Vbh,self.n,self._Is,self._KbT)
                 
+            
+    def extract_good(self,r_squared=0.6):
+        fit=np.array(self.beesfit)
+        r=np.array([x.r_squared for x in fit])
+        return fit[np.logical_and(r>r_squared,r<1)]
+        
 
-    @staticmethod
-    def schottky_richardson(V,Vbh,n,Is,KbT):
-        I=Is*np.exp(-Vbh/(KbT)+V/(n*KbT))*(1-np.exp(-V/(KbT)))
-        return I
+def fit_para(x):
+    x.auto_range_fit()
+    return {'barrier_height':x.barrier_height,'trans_a':x.trans_a,'noise':x.noise,
+        'barrier_height_err':x.barrier_height_err,'trans_a_err':x.trans_a_err,'noise_err':x.noise_err,
+        'bias_max':x.bias_max,'bias_min':x.bias_min}
 
     
 
@@ -377,3 +330,22 @@ def r_squared(y_sampled, y_estimated):
     sse = sum( (y_sampled - y_estimated)**2 )
     sst = sum( (y_sampled - np.mean(y_sampled) )**2 )
     return 1 - sse / sst
+
+
+
+def bell_kaiser_v(bias, barrier_height, trans_a, noise):    
+    i_beem = np.zeros(bias.shape[0])
+    x=np.abs(bias) > np.abs(barrier_height)
+    bias=bias[x]
+    k=bias-barrier_height
+    i_beem[x] = -trans_a*k*k / bias
+    return i_beem + noise
+
+def bell_kaiser(bias, barrier_height, trans_a, noise):
+    i_beem = np.ones(bias.shape[0]) * noise
+    i_beem[bias < barrier_height] = (-trans_a * 
+        (bias[bias < barrier_height] - barrier_height)**2 ) + noise
+    return i_beem
+    
+def combine_mean(x):
+    return np.mean(x,0)

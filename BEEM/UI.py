@@ -8,97 +8,77 @@ Created on Sat Dec  8 14:00:12 2012
 
 
 
-from spyderlib.widgets.internalshell import InternalShell
-import sys
-from spyderlib.qt import QtGui, QtCore
-import numpy as np
+
 import pyqtgraph as pg
-import os.path
-import experiment
-
-
-class IV_UI(QtGui.QWidget):
+import numpy as np
+        
+class BEESFit_graph(object):
+    
     def __init__(self):
-        QtGui.QWidget.__init__(self)
-        self.initUI()
-        
-        
-    def initUI(self):
-        self.graph=pg.PlotWidget()
+        self.graph = pg.PlotWidget()
         ploti=self.graph.getPlotItem()
-        ploti.setLabel('left','Current','A')
+        self.label = pg.TextItem(anchor=(1,0))
+        ploti.setLabel('left','BEEM Current','A')
         ploti.setLabel('bottom','Bias','V')
-        ploti.setLogMode(False,True)
-        ploti.setXRange(-0.5,1.5)
-        self.region=pg.LinearRegionItem([0.1,0.4])
+        self.region=pg.LinearRegionItem([0,1])
         self.region.sigRegionChanged.connect(self.fit)
+        ploti.sigRangeChanged.connect(self.updatePos)
         ploti.addItem(self.region)
-        self.cara=ploti.plot()
-        self.fitted=ploti.plot(pen='r')
-        
-         # Create the console widget
-        font = QtGui.QFont("Courier new")
-        font.setPointSize(10)
-        ns = {'win': self}
-        msg = "Debug"
-        self.console = cons = InternalShell(self, namespace=ns, message=msg)
-        
-        cons.set_font(font)
-        cons.set_codecompletion_auto(True)
-        cons.set_calltips(True)
-        cons.setup_calltips(size=600, font=font)
-        cons.setup_completion(size=(300, 180), font=font)
-        self.file_btn=QtGui.QPushButton()
-        self.file_btn.setIcon(QtGui.QIcon.fromTheme('folder'))
-        self.file_btn.clicked.connect(self.browse)
-        
-        self.file_text=QtGui.QLineEdit()
-        
-        self.hbox1=QtGui.QHBoxLayout()
-        self.hbox1.addWidget(self.file_text)
-        self.hbox1.addWidget(self.file_btn)
-        self.vbox=QtGui.QVBoxLayout()
-        self.vbox.addLayout(self.hbox1)
-        self.hbox=QtGui.QHBoxLayout()
-        self.hbox.addLayout(self.vbox)
-        self.hbox.addWidget(self.graph)
-        self.vbox1=QtGui.QVBoxLayout()
-        self.vbox1.addLayout(self.hbox)
-        self.vbox1.addWidget(self.console)
-        self.setLayout(self.vbox1)
-        
-    def browse(self):
-        f=str(self.file_text.text())
-        d=os.path.dirname(f)
-        if not(os.path.isdir(d)):
-            d=os.path.expanduser("~")
-        fname= QtGui.QFileDialog.getOpenFileName(self,self.tr('Choose a file'),d)
-        self.file_text.setText(fname)
-        self.iv=experiment.iv.fromfile(fname)     
+        ploti.addItem(self.label)
+        self.cara=ploti.plot([np.nan],[np.nan])
+        self.fitted=ploti.plot([np.nan],[np.nan],pen='r')
+        self.graph.show()
+    
+    def updatePos(self):
         ploti=self.graph.getPlotItem()
-        self.cara.setData(self.iv.V,np.abs(self.iv.I))
-        self.fit()
-        ploti.enableAutoScale()
-        
-        
+        geo=ploti.viewRange()
+        x=geo[0][1]
+        y=geo[1][1]
+        self.label.setPos(x,y)
+    
+    def updateBEEM(self):
+        self.cara.setData(self.beesfit.bias,self.beesfit.i_beem)
+    
+    def updateFitted(self):
+        try:
+            r=np.sqrt(self.beesfit.r_squared)
+            if np.isnan(r):
+                r=0
+            if not(self.beesfit.barrier_height==None):
+                self.label.setText("Vbh=%0.5f, R=%0.5f" % (self.beesfit.barrier_height,r))
+            
+            if self.beesfit.i_beem_estimated==None:
+                self.fitted.setData([np.nan],[np.nan])
+            else:
+                self.fitted.setData(self.beesfit.bias_fitted,self.beesfit.i_beem_estimated)
+                
+        except:
+            pass
+    
     def fit(self):
         Vmin,Vmax=self.region.getRegion()
-        self.iv.Vmax=Vmax
-        self.iv.Vmin=Vmin
-        V=np.linspace(Vmin,Vmax,300)
-        I=self.iv.Ifitted(V)
-        self.fitted.setData(V,np.abs(I))
+        self.beesfit.bias_max=Vmax
+        self.beesfit.bias_min=Vmin
+        self.beesfit.fit()
+        self.updateFitted()
+       
+            
+    def set_bees(self,beesfit):
+        self.beesfit=beesfit
+        self.region.setRegion([beesfit.bias_min,beesfit.bias_max])
+        self.updateBEEM()
+        self.updateFitted()
+        self.graph.getPlotItem().autoRange()
         
-
-def main():
-    app = QtGui.QApplication(sys.argv)
-    wid = QtGui.QMainWindow()
-    wid.resize(1000, 700)
-    wid.setWindowTitle('pyBEEM')
-    wid.setCentralWidget(IV_UI())
-    wid.show()
-    sys.exit(app.exec_())
-    
-    
-if __name__ == "__main__":
-    main()
+def select_bees(bees_fit_list):
+    ui=BEESFit_graph()
+    selected=[]
+    i=0
+    for bees in bees_fit_list:
+        ui.set_bees(bees)
+        print bees.barrier_height_err/bees.barrier_height
+        x=raw_input("%d:"%i)
+        if x=='':
+            i+=1
+            selected.append(bees)
+    return selected
