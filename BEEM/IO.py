@@ -8,7 +8,7 @@ Created on Fri Dec  7 18:43:57 2012
 import numpy as np
 import datetime
 import Experiment
-from PySide import QtGui
+
 
 def file2data(filename, lastHeader="[DATA]"):
     """Function to read data from ASCII file with header
@@ -101,9 +101,7 @@ def BEESFromFile(filename):
     return BEES
             
 
-def grid_from_3ds(filename=None):
-    if filename==None:
-        filename,_=QtGui.QFileDialog.getOpenFileName(filter="3ds (*.3ds)")
+def grid_from_3ds(filename):
     fid=open(filename,'rb')
     grid=Experiment.Grid()
     line=fid.readline().strip()
@@ -221,4 +219,5 @@ def iv_from_file(filename):
 if __name__ == "__main__":
     g=grid_from_3ds('/home/guillaume/Dropbox/nus/master/BEEM/2012-12-26/Grid_HfO-3_D3_009.3ds')
     g.normal_fit()
-    g.fit()
+    Experiment.use_pureC(True)
+    g.fit(1)

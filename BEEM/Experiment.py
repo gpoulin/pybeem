@@ -4,17 +4,44 @@ Created on Sat Jan  5 00:44:47 2013
 
 @author: Guillaume Poulin
 """
-import _pureC
-#import cfunction
+
 import numpy as np
 import scipy.optimize as op
 import pylab
 import multiprocessing as mp
 import time
-#from scipy import weave
 
+_use_pureC=True
+
+bell_kaiser_v=None
+residu_bell_kaiser_v=None
+
+def use_pureC(val=True):
+    global bell_kaiser_v,residu_bell_kaiser_v,_use_pureC
+    if val==True:
+        try:
+            bell_kaiser_v=_pureC.bell_kaiser_v
+            residu_bell_kaiser_v=_pureC.residu_bell_kaiser_v
+            return
+        except :
+            pass
+        
+    bell_kaiser_v=_purePython.bell_kaiser_v
+    residu_bell_kaiser_v=_purePython.residu_bell_kaiser_v
+
+import _purePython as _purePython
+
+try:
+    import _pureC as _pureC
+    use_pureC(True)
+except ImportError:
+    use_pureC(False)
+    
 
 MODE = {'fwd':0, 'bwd':1} #Enum to store if in the foward or backward mode
+BEEM_MODEL = {'bkv':0,'bk':1}
+
+
 
 class Experiment(object):
     """Class to store general data about an experiment
@@ -62,10 +89,10 @@ class BEESFit(object):
         self.filter = None #no filter
         self.trans_a = None
         self.barrier_height = None
-        self.barrier_height_max=-0.5
         self.noise = None
+        self.n=2
         self.combine = combine_mean
-        self.method = _pureC.bell_kaiser_v
+        self.method = BEEM_MODEL['bkv']
         self.bias_max=np.max(self.bias)
         self.bias_min=np.min(self.bias)
         self.positive=self.bias_min>0
@@ -99,8 +126,11 @@ class BEESFit(object):
     def i_beem_estimated(self):
         if self.barrier_height==None:
             return None
-        return self.method(self.bias_fitted, self.barrier_height, 
-                           self.trans_a, self.noise);
+        if self.method==BEEM_MODEL["bkv"]:
+            return bell_kaiser_v(self.bias_fitted,self.n,
+                        np._r[self.noise, self.barrier_height,self.trans_a]);
+        
+        return None
     
     @property
     def pos_x(self):
@@ -173,28 +203,40 @@ class BEESFit(object):
             for bees in data:
                  self.data.append(bees)
     
-    def fit(self, barrier_height = -0.8, trans_a = 0.001, noise = 1e-9):
+    def fit(self, barrier_height = [-0.8], trans_a = [0.001], noise = 1e-9):
         
         if barrier_height<self.bias_min or barrier_height>self.bias_max:
             barrier_height=(self.bias_min+self.bias_max)/2
         
         try:
-            popt, pconv = op.curve_fit(self.method, self.bias_fitted, self.i_beem_fitted,
-                                   [barrier_height, trans_a, noise],maxfev=2000)
+            ydata=self.i_beem_fitted
+            if self.method==BEEM_MODEL['bkv']:
+                func=residu_bell_kaiser_v
+                p0=[noise, barrier_height, trans_a]
+                args=(self.bias_fitted,ydata,self.n)
             
-            self.barrier_height = popt[0]
-            self.trans_a = popt[1]
-            self.noise = popt[2]
-            self.barrier_height_err=np.sqrt(pconv[0,0])
-            self.trans_a_err=np.sqrt(pconv[1,1])
-            self.noise_err=np.sqrt(pconv[2,2])
+            #Curve fit and compute error
+            popt, pcov,info,mesg,ier = op.leastsq(func,p0,args,maxfev=2000,full_output=1)
+            if (len(ydata) > len(p0)) and pcov is not None:
+                s_sq = (func(popt, *args)**2).sum()/(len(ydata)-len(p0))
+                pcov = pcov * s_sq
+            else:
+                pcov = np.inf
+            
+            
+            self.barrier_height = popt[1]
+            self.trans_a = popt[2]
+            self.noise = popt[0]
+            self.barrier_height_err=np.sqrt(pcov[1,1])
+            self.trans_a_err=np.sqrt(pcov[2,2])
+            self.noise_err=np.sqrt(pcov[0,0])
         except:
             self.barrier_height = None
             self.trans_a = None
             self.noise = None
-            #self.barrier_height_err=np.inf
-            #self.trans_a_err=np.inf
-            #self.noise_err=np.inf
+            self.barrier_height_err=[np.inf]
+            self.trans_a_err=[np.inf]
+            self.noise_err=np.inf
             
         
     def export_plot(self,fig=1):
@@ -289,9 +331,11 @@ class Grid(Experiment):
             for x in self.beesfit:
                 x.auto_range_fit()
         else:
-            p=mp.Pool(threads)
-            beesfit=p.map(fit_para,self.beesfit)
-            p.close()            
+            if threads==-1:
+                p=mp.Pool()
+            else:
+                p=mp.Pool(threads)
+            beesfit=p.map(fit_para,self.beesfit)       
             for i in range(0,len(beesfit)):
                 for x in beesfit[i].keys():
                     self.beesfit[i].__setattr__(x,beesfit[i][x])
@@ -308,6 +352,16 @@ class Grid(Experiment):
         
 
 def fit_para(x):
+    '''Fit BEES and return a dict of the optimal parameters. \
+    Useful for multiprocessing otherwise simply x.auto_range_fit()
+    
+    Args:
+        x (BEESFit): BEES to fit
+        
+    Return:
+        dict. Dictionnary containing all the attributes of x that need to be\
+            modifed to be fitted fitted
+    '''
     x.auto_range_fit()
     return {'barrier_height':x.barrier_height,'trans_a':x.trans_a,'noise':x.noise,
         'barrier_height_err':x.barrier_height_err,'trans_a_err':x.trans_a_err,'noise_err':x.noise_err,
@@ -319,8 +373,8 @@ def r_squared(y_sampled, y_estimated):
     """Give the correlation coefficient between sampled data eand estimate data
     
     Args:
-        y_sampled (np.array): data sampled
-        y_estimated (np.array): data estimated by fitting
+        y_sampled (ndarray): data sampled
+        y_estimated (ndarray): data estimated by fitting
         
     Returns:
         float. squared correlation coefficient
@@ -330,22 +384,27 @@ def r_squared(y_sampled, y_estimated):
     sse = sum( (y_sampled - y_estimated)**2 )
     sst = sum( (y_sampled - np.mean(y_sampled) )**2 )
     return 1 - sse / sst
-
-
-
-def bell_kaiser_v(bias, barrier_height, trans_a, noise):    
-    i_beem = np.zeros(bias.shape[0])
-    x=np.abs(bias) > np.abs(barrier_height)
-    bias=bias[x]
-    k=bias-barrier_height
-    i_beem[x] = -trans_a*k*k / bias
-    return i_beem + noise
-
-def bell_kaiser(bias, barrier_height, trans_a, noise):
-    i_beem = np.ones(bias.shape[0]) * noise
-    i_beem[bias < barrier_height] = (-trans_a * 
-        (bias[bias < barrier_height] - barrier_height)**2 ) + noise
-    return i_beem
+    
     
 def combine_mean(x):
     return np.mean(x,0)
+    
+def BEES_position(bees_list):
+    """Sort bees in a list according to their position
+    
+    """    
+
+    bees_list=np.array(bees_list)
+    x = np.unique(filter(None,[b.pos_x for b in bees_list]))
+    y = np.unique(filter(None,[b.pos_y for b in bees_list]))
+    
+    #create array of empty lists
+    grid=np.array([[None]*len(x)]*len(y))
+    grid=np.frompyfunc(lambda x:[],1,1)(grid)
+    
+    for bees in bees_list:
+        if not(bees.pos_x==None) and not(bees.pos_y==None):
+            grid[x==bees.pos_x,y==bees.pos_y][0].append(bees)
+     
+    return (x,y,grid)
+    

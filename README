@@ -1,0 +1,8 @@
+Dependances:
+    python 2.7
+    matplotlib >=1.2
+    NumPy >=1.6
+    Scipy >=0.11
+    PySide >=1.1 or PyQt >=4.9
+    IPython
+    

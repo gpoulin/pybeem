@@ -4,11 +4,14 @@ Created on Sat Dec  8 15:19:09 2012
 
 @author: Guillaume Poulin
 """
+
 import pylab
 import numpy as np
 import scipy as sp
-from PySide import QtGui
-import sys
+import inspect, os
+
+RCDIR=os.path.abspath(os.path.dirname(inspect.getfile(inspect.currentframe()))+u'/rc')
+
 
 
 def normplot(x,*arg,**kwarg):
@@ -34,11 +37,6 @@ def cdfplot(x,*arg,**kwarg):
     pylab.plot(sx,y,*arg,**kwarg)
 
 def main():
-    app = QtGui.QApplication(sys.argv)
-    wid = QtGui.QMainWindow()
-    wid.resize(1000, 700)
-    wid.setWindowTitle('pyBEEM')
-    wid.setCentralWidget(UI.IV_UI())
-    wid.show()
-    sys.exit(app.exec_())
+    import os
+    os.system('ipython --pylab=qt -i ' +  RCDIR + '/ipy.py')
     
