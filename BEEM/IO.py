@@ -28,8 +28,8 @@ def file2data(filename, lastHeader="[DATA]"):
             dico.update({
             'Date': lambda x: {'date' : datetime.datetime.strptime(
                     x[1] + ' ' + x[2], '%d.%m.%Y %H:%M:%S')},
-            'X': lambda x: {'pos_x': x[2]},
-            'Y': lambda x: {'pos_y': x[2]},
+            'X': lambda x: {'pos_x': np.double(x[2])},
+            'Y': lambda x: {'pos_y': np.double(x[2])},
             }.get(split_line[0],lambda x: {})(split_line))
         
         line = fid.readline()
@@ -99,6 +99,14 @@ def BEESFromFile(filename):
             i+=1
         
     return BEES
+    
+    
+def grid_from_files(filenames):
+    g=Experiment.Grid()
+    for f in filenames:
+        b=BEESFromFile(f)
+        g.bees+=b
+    return g
             
 
 def grid_from_3ds(filename):
@@ -173,51 +181,48 @@ def grid_from_3ds(filename):
     
     
     for i in range(0,num):
-        grid.bees.append([])
-        bees_list=grid.bees[i]
         delta=i*length
         pos_x=data[delta+param_dict['X (m)']]
         pos_y=data[delta+param_dict['Y (m)']]
         dico={'pos_x':pos_x, 'pos_y':pos_y, 'date':grid.date, 'src_file':grid.src_file}
         
         if channel_dict.has_key('BEEM Current (A)'):
-            bees_list.append(Experiment.BEESData(
+            grid.bees.append(Experiment.BEESData(
             bias = data[delta+param_num+channel_dict['Bias (V)']*points:param_num+channel_dict['Bias (V)']*points+points+delta:],
             i_beem = data[delta+param_num+channel_dict['BEEM Current (A)']*points:param_num+channel_dict['BEEM Current (A)']*points+points+delta:],
             i_tunnel = data[delta+param_num+channel_dict['Current (A)']*points:param_num+channel_dict['Current (A)']*points+points+delta:],
             pos_z = data[delta+param_num+channel_dict['Z (m)']*points:param_num+channel_dict['Z (m)']*points+points+delta:],
             mode=Experiment.MODE['fwd'],**dico))
         
-            bees_list.append(Experiment.BEESData(
+            grid.bees.append(Experiment.BEESData(
             bias = data[delta+param_num+channel_dict['Bias [bwd] (V)']*points:param_num+channel_dict['Bias [bwd] (V)']*points+points+delta:],
             i_beem = data[delta+param_num+channel_dict['BEEM Current [bwd] (A)']*points:param_num+channel_dict['BEEM Current [bwd] (A)']*points+points+delta:],
             i_tunnel = data[delta+param_num+channel_dict['Current [bwd] (A)']*points:param_num+channel_dict['Current [bwd] (A)']*points+points+delta:],
             pos_z = data[delta+param_num+channel_dict['Z [bwd] (m)']*points:param_num+channel_dict['Z [bwd] (m)']*points+points+delta:],
             mode=Experiment.MODE['bwd'],**dico))
         
-        
-            
-        
-        
     
     return grid
     
     
 def iv_from_file(filename):
-    data,name=file2data(filename)
-    a=Experiment.IV()
-    V=np.zeros((data.shape[0],2))
-    I=np.zeros((data.shape[0],2))
-    V[:,Experiment.MODE['fwd']]=data[:,name['Bias (V)']]
-    V[:,Experiment.MODE['fwd']]=data[:,name['Bias [bwd] (V)']]
-    I[:,Experiment.MODE['fwd']]=data[:,name['IV Current (A)']]
-    I[:,Experiment.MODE['fwd']]=data[:,name['IV Current [bwd] (A)']]
-    a._V=V
-    a._I=I
-    return a    
+    data,name,other=file2data(filename)
+    a=[Experiment.IV(),Experiment.IV()]
+    a[0].V=data[:,name['Bias (V)']]
+    a[1].V=data[:,name['Bias [bwd] (V)']]
+    a[0].I=data[:,name['IV Current (A)']]
+    a[1].I=data[:,name['IV Current [bwd] (A)']]
+    a[1].mode=Experiment.MODE['bwd']
+    return a
+    
+def ivs_from_file(filenames):
+    list=[]
+    for filename in filenames:
+        list+=iv_from_file(filename)
+    return list
     
 if __name__ == "__main__":
     g=grid_from_3ds('/home/guillaume/Dropbox/nus/master/BEEM/2012-12-26/Grid_HfO-3_D3_009.3ds')
     g.normal_fit()
     Experiment.use_pureC(True)
-    g.fit(1)
+    g.fit(-1)

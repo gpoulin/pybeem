@@ -11,9 +11,10 @@ Created on Sat Dec  8 14:00:12 2012
 
 import pyqtgraph as pg
 import numpy as np
-from BEEM.IO import grid_from_3ds
+from IO import grid_from_3ds
 import os
 import json
+import matplotlib.pyplot as mpl
 
 PYSIDE = True
 
@@ -40,40 +41,39 @@ else:
     Slot = QtCore.pyqtSlot
     Property = QtCore.pyqtProperty
 
-PREF = {
-    u'work_folder':os.path.expanduser(u'~')
-    
-    }
+PREF = dict() #{
+#    u'work_folder':os.path.expanduser(u'~')
+#    }
 
-class BEESFit_graph(object):
+class BEESFit_graph(pg.PlotWidget):
 
-    def __init__(self):
-        self.graph = pg.PlotWidget()
-        ploti = self.graph.getPlotItem()
+    def __init__(self,parent=None):
+        super(BEESFit_graph,self).__init__(parent)
+        ploti = self.getPlotItem()
         self.label = pg.TextItem(anchor=(1, 0))
         ploti.setLabel('left', u'BEEM Current','A')
         ploti.setLabel('bottom', u'Bias','V')
         self.region = pg.LinearRegionItem([0, 1])
         self.region.sigRegionChanged.connect(self.fit)
-        ploti.sigRangeChanged.connect(self.updatePos)
+        ploti.sigRangeChanged.connect(self._updatePos)
         ploti.addItem(self.region)
         ploti.addItem(self.label)
         self.cara = ploti.plot([np.nan], [np.nan])
         self.fitted = ploti.plot([np.nan], [np.nan], pen='r')
-        self.graph.show()
+        self.show()
         self.beesfit = None
 
-    def updatePos(self):
-        ploti = self.graph.getPlotItem()
+    def _updatePos(self):
+        ploti = self.getPlotItem()
         geo = ploti.viewRange()
         x = geo[0][1]
         y = geo[1][1]
         self.label.setPos(x, y)
 
-    def updateBEEM(self):
+    def _updateBEEM(self):
         self.cara.setData(self.beesfit.bias, self.beesfit.i_beem)
 
-    def updateFitted(self):
+    def _updateFitted(self):
         try:
             r = np.sqrt(self.beesfit.r_squared)
             if np.isnan(r):
@@ -87,35 +87,43 @@ class BEESFit_graph(object):
             else:
                 self.fitted.setData(self.beesfit.bias_fitted,
                                     self.beesfit.i_beem_estimated)
+        
+            self.getPlotItem().autoRange()
 
         except:
             pass
 
     def fit(self):
         Vmin, Vmax = self.region.getRegion()
-        self.beesfit.bias_max = Vmax
-        self.beesfit.bias_min = Vmin
-        self.beesfit.fit()
-        self.updateFitted()
+        b=self.beesfit
+        b.bias_max = Vmax
+        b.bias_min = Vmin
+        if b.r_squared>0.1:
+            b.fit(b.barrier_height, b.trans_a, b.noise)
+        else:
+            b.fit()
+        self._updateFitted()
 
 
     def set_bees(self, beesfit):
         self.beesfit = beesfit
         self.region.setRegion([beesfit.bias_min, beesfit.bias_max])
-        self.updateBEEM()
-        self.updateFitted()
-        self.graph.getPlotItem().autoRange()
+        self._updateBEEM()
+        self._updateFitted()
+        self.getPlotItem().autoRange()
 
 def select_bees(bees_fit_list):
     ui = BEESFit_graph()
     selected = []
     i = 0
+    j=0
     for bees in bees_fit_list:
         ui.set_bees(bees)
-        x = raw_input("%d:"%i)
+        x = raw_input("%d/%d:"%(i,j))
         if x == '':
             i += 1
             selected.append(bees)
+        j+=1
     return selected
 
 def select_file(folder = None, filter = None, selected_filter = None):
@@ -155,9 +163,10 @@ def load_pref(filename = None):
     global PREF
     if filename == None:
         filename = find_config()
-    fid = open(filename,'r')
-    PREF = json.load(fid)
-    fid.close()
+    if os.path.exists(filename):
+        fid = open(filename,'r')
+        PREF.update(json.load(fid))
+        fid.close()
 
 def fit_file(filename = None, folder = None):
     if folder == None:
@@ -166,3 +175,20 @@ def fit_file(filename = None, folder = None):
     g.normal_fit()
     g.fit(-1)
     return g
+    
+def dualplot(bees,**kwds):
+    bh=np.abs([x.barrier_height for x in bees])
+    r=[x.trans_r for x in bees]
+    h=mpl.hist2d(bh,r,**kwds)
+    c=mpl.colorbar()
+    mpl.xlabel('$\phi$ (eV)')
+    mpl.ylabel('R (eV$^{-1}$)')
+    return h,c
+    
+def mod():
+    global PREF
+    PREF['a']=2
+    
+if __name__ == "__main__":
+    load_pref()
+    print PREF

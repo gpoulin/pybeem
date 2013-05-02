@@ -10,11 +10,15 @@ import scipy.optimize as op
 import pylab
 import multiprocessing as mp
 import time
+import scipy.constants as constants
+import warnings
+
 
 _use_pureC=True
 
 bell_kaiser_v=None
 residu_bell_kaiser_v=None
+warnings.simplefilter('error',RuntimeWarning)
 
 def use_pureC(val=True):
     global bell_kaiser_v,residu_bell_kaiser_v,_use_pureC
@@ -80,6 +84,9 @@ class BEESData(Experiment):
         self.pos_z = pos_z
         self.mode = mode
         self.number = number
+        self.pass_number=-1
+        self.x_index=-1
+        self.y_index=-1
         
 class BEESFit(object):
     
@@ -97,8 +104,8 @@ class BEESFit(object):
         self.bias_min=np.min(self.bias)
         self.positive=self.bias_min>0
         self.updated = False
-        self.barrier_height_err=None
-        self.trans_a_err=None
+        self.barrier_height_err=[None]
+        self.trans_a_err=[None]
         self.noise_err=None
         
     @property
@@ -128,7 +135,7 @@ class BEESFit(object):
             return None
         if self.method==BEEM_MODEL["bkv"]:
             return bell_kaiser_v(self.bias_fitted,self.n,
-                        np._r[self.noise, self.barrier_height,self.trans_a]);
+                        np.r_[self.noise, self.barrier_height,self.trans_a]);
         
         return None
     
@@ -203,7 +210,16 @@ class BEESFit(object):
             for bees in data:
                  self.data.append(bees)
     
-    def fit(self, barrier_height = [-0.8], trans_a = [0.001], noise = 1e-9):
+    def fit(self, barrier_height = -0.8, trans_a = 0.001, noise = 1e-9):
+        
+        if barrier_height==None:
+            barrier_height=-0.8
+            
+        if trans_a==None:
+            barrier_height=0.001
+        
+        if noise==None:
+            noise=1e-9
         
         if barrier_height<self.bias_min or barrier_height>self.bias_max:
             barrier_height=(self.bias_min+self.bias_max)/2
@@ -234,8 +250,8 @@ class BEESFit(object):
             self.barrier_height = None
             self.trans_a = None
             self.noise = None
-            self.barrier_height_err=[np.inf]
-            self.trans_a_err=[np.inf]
+            self.barrier_height_err=np.inf
+            self.trans_a_err=np.inf
             self.noise_err=np.inf
             
         
@@ -297,6 +313,11 @@ class BEESFit(object):
                 else:
                     self.bias_max=(2*self.barrier_height+barrier_height)/3+auto_range
                 barrier_height=self.barrier_height
+        
+        if self.r_squared<0.1:
+            self.barrier_height=None
+            self.trans_a=None
+            self.noise=None            
             
         
     @property
@@ -318,11 +339,21 @@ class Grid(Experiment):
         self.beesfit = []
         self.fit_method='auto_range_fit'
         self.completed=False
+        self.xs=[]
+        self.ys=[]
+        
+    def __add__(self,other):
+        ret=Grid()
+        ret.bees=self.bees+other.bees
+        ret.beesfit=self.beesfit+other.beesfit
+        return ret
         
     def normal_fit(self):
-        self.beesfit=[BEESFit(self.bees[i][j])
-                    for i in range(0,len(self.bees)) 
-                    for j in range(0,len(self.bees[i]))]
+        self.beesfit=[BEESFit(self.bees[i]) for i in range(len(self.bees))]
+        
+    def set_n(self,n):
+        for b in self.beesfit:
+            b.n=n
                     
     def fit(self,threads=1):
         
@@ -335,14 +366,38 @@ class Grid(Experiment):
                 p=mp.Pool()
             else:
                 p=mp.Pool(threads)
-            beesfit=p.map(fit_para,self.beesfit)       
+            beesfit=p.map(fit_para,self.beesfit)
+            p.close()
             for i in range(0,len(beesfit)):
                 for x in beesfit[i].keys():
                     self.beesfit[i].__setattr__(x,beesfit[i][x])
         t2=time.time()
         print t2-t1
         
-        
+    def set_coord(self):
+        self.xs = np.unique(filter(lambda x: not(x==None),[b.pos_x for b in self.bees]))
+        self.ys = np.unique(filter(lambda x: not(x==None),[b.pos_y for b in self.bees]))
+    
+    def set_indexes(self):
+        x_len=np.array(range(len(self.xs)))
+        y_len=np.array(range(len(self.ys)))
+        for b in self.bees:
+            b.x_index=x_len[self.xs==b.pos_x][0]
+            b.y_index=y_len[self.ys==b.pos_y][0]
+            
+    def set_pass_number(self):
+        for i in xrange(len(self.xs)):
+            for j in xrange(len(self.ys)):
+                bl=[b for b in self.bees if (b.x_index==i and b.y_index==j)]
+                bdate=np.unique([x.date for x in bl])
+                date_len=np.array(range(len(bdate)))
+                for k in bl:
+                    k.pass_number=date_len[bdate==k.date][0]+1
+                    
+    def init_grid(self):
+        self.set_coord()
+        self.set_indexes()
+        self.set_pass_number()
                 
             
     def extract_good(self,r_squared=0.6):
@@ -350,7 +405,55 @@ class Grid(Experiment):
         r=np.array([x.r_squared for x in fit])
         return fit[np.logical_and(r>r_squared,r<1)]
         
-
+        
+class IV(Experiment):
+    
+    def __init__(self,**kwd):
+        super(IV,self).__init__(**kwd)
+        self.V=np.array([])
+        self.I=np.array([])
+        self.mode=MODE['fwd']
+        self.T=300.
+        self.A=1.1e6
+        self.W=np.pi*2.5e-4**2
+        self.n=0
+        self.barrier_height=0
+        self.r_squared=0
+        self.Vmax=0
+        self.Vmin=0
+        self.KbT=constants.physical_constants['Boltzmann constant in eV/K'][0]*self.T
+        self.Is=self.A*self.W*self.T**2        
+        
+    @property
+    def _fit_index(self):
+        return np.logical_and(self.V<self.Vmax,self.V>self.Vmin)
+        
+    @property
+    def V_fitted(self):
+        return self.V[self._fit_index]
+    
+    @property
+    def I_fitted(self):
+        return self.I[self._fit_index]
+        
+    @staticmethod
+    def schottky_richardson(V,Vbh,n,Is,KbT):
+        I=Is*np.exp(-Vbh/(KbT)+V/(n*KbT))*(1-np.exp(-V/(KbT)))
+        return I
+    
+    def _model_fit(self,V,Vbh,n):
+        return np.log(np.abs(IV.schottky_richardson(V,Vbh,n,self.Is,self.KbT)))
+        
+    def fit(self,Vbh_init=0.8,n_init=1.0):
+        popt,pconv=op.curve_fit(self._model_fit,self.V_fitted,np.log(np.abs(self.I_fitted)),[Vbh_init,n_init])
+        self.barrier_height=popt[0]
+        self.n=popt[1]
+        self.r_squared=r_squared(np.log(np.abs(self.I_fitted)),self._model_fit(self.V_fitted,popt[0],popt[1]))
+    
+        
+    
+                
+        
 def fit_para(x):
     '''Fit BEES and return a dict of the optimal parameters. \
     Useful for multiprocessing otherwise simply x.auto_range_fit()

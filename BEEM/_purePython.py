@@ -35,9 +35,10 @@ def bell_kaiser_v(bias,n,params):
         else:
             i=bias>bh
         V=bias[i]
-        i_beem[i]+=-a*(V-bh)**n/V
+        i_beem[i]+=-a*np.abs((V-bh))**n/V
         
     return i_beem
     
+
 def residu_bell_kaiser_v(params,bias,i_beem,n):
     return bell_kaiser_v(bias,n,params)-i_beem

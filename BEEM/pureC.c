@@ -148,7 +148,7 @@ void _bell_kaiser_v(int l ,double * bias, double * i_beem, double n, double nois
       {
         if(bias[i]<barrier_height[j])
         {
-          i_beem[i]+=-trans_a[j]*pow(bias[i]-barrier_height[j],n)/bias[i];
+          i_beem[i]+=-trans_a[j]*pow(fabs(bias[i]-barrier_height[j]),n)/bias[i];
         }
       }
     }

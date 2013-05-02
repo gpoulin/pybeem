@@ -8,7 +8,6 @@ import inspect, os, sys
 sys.path.append(os.path.abspath(os.path.dirname(inspect.getfile(inspect.currentframe()))+u'../../..'))
 from BEEM.IO import *
 from BEEM.Experiment import *
-from BEEM import *
 from pylab import *
 from BEEM.UI import *
 load_pref()

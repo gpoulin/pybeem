@@ -8,9 +8,7 @@ Created on Sat Dec  8 15:19:09 2012
 import pylab
 import numpy as np
 import scipy as sp
-import inspect, os
 
-RCDIR=os.path.abspath(os.path.dirname(inspect.getfile(inspect.currentframe()))+u'/rc')
 
 
 
@@ -35,8 +33,12 @@ def cdfplot(x,*arg,**kwarg):
     y=np.linspace(0,1,len(x))
     sx=np.sort(x)
     pylab.plot(sx,y,*arg,**kwarg)
+    
+def launch_ipython():
+    import os
+    import rc
+    os.system('ipython --pylab=qt -i ' +  rc.RCDIR + '/ipy.py')
 
 def main():
-    import os
-    os.system('ipython --pylab=qt -i ' +  RCDIR + '/ipy.py')
+    launch_ipython()
     
