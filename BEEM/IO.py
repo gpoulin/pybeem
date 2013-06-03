@@ -61,7 +61,7 @@ def scan2data(filename):
         s[1]=f.read(1)
     
 
-def BEESFromFile(filename):
+def BEESFromFile(filename,dic={'beem':'BEEM Current'}):
     data, name, dico = file2data(filename)
     BEES=[]
     if name.has_key('BEEM Current (A)'):
@@ -84,14 +84,14 @@ def BEESFromFile(filename):
         while name.has_key('Bias [%05i] (V)'%i):
             BEES.append(Experiment.BEESData(
                 bias = data[:,name['Bias [%05i] (V)'%i]],
-                i_beem = data[:,name['BEEM Current [%05i] (A)'%i]],
+                i_beem = data[:,name[dic['beem']+ ' [%05i] (A)'%i]],
                 i_tunnel = data[:,name['Current [%05i] (A)'%i]],
                 pos_z = data[:,name['Z [%05i] (m)'%i]],
                 mode=Experiment.MODE['fwd'], number=i, **dico))
          
             BEES.append(Experiment.BEESData(
                 bias = data[:,name['Bias [%05i] [bwd] (V)'%i]],
-                i_beem = data[:,name['BEEM Current [%05i] [bwd] (A)'%i]],
+                i_beem = data[:,name[dic['beem']+' [%05i] [bwd] (A)'%i]],
                 i_tunnel = data[:,name['Current [%05i] [bwd] (A)'%i]],
                 pos_z = data[:,name['Z [%05i] [bwd] (m)'%i]],
                 mode=Experiment.MODE['bwd'], number=i, **dico))
@@ -101,10 +101,13 @@ def BEESFromFile(filename):
     return BEES
     
     
-def grid_from_files(filenames):
+def grid_from_files(filenames,dic=None):
     g=Experiment.Grid()
     for f in filenames:
-        b=BEESFromFile(f)
+        if dic==None:
+            b=BEESFromFile(f)
+        else:
+            b=BEESFromFile(f,dic)
         g.bees+=b
     return g
             
@@ -205,24 +208,27 @@ def grid_from_3ds(filename):
     return grid
     
     
-def iv_from_file(filename):
+def iv_from_file(filename,dic={}):
+    if not(dic.has_key('Current')):
+        dic['Current']='IV Current'
     data,name,other=file2data(filename)
     a=[Experiment.IV(),Experiment.IV()]
     a[0].V=data[:,name['Bias (V)']]
     a[1].V=data[:,name['Bias [bwd] (V)']]
-    a[0].I=data[:,name['IV Current (A)']]
-    a[1].I=data[:,name['IV Current [bwd] (A)']]
+    a[0].I=data[:,name[dic['Current'] + ' (A)']]
+    a[1].I=data[:,name[dic['Current'] + ' [bwd] (A)']]
     a[1].mode=Experiment.MODE['bwd']
     return a
     
-def ivs_from_file(filenames):
+def ivs_from_file(filenames,dic={}):
     list=[]
     for filename in filenames:
-        list+=iv_from_file(filename)
+        list+=iv_from_file(filename,dic)
     return list
     
 if __name__ == "__main__":
     g=grid_from_3ds('/home/guillaume/Dropbox/nus/master/BEEM/2012-12-26/Grid_HfO-3_D3_009.3ds')
+    g.init_grid()    
     g.normal_fit()
     Experiment.use_pureC(True)
-    g.fit(-1)
+    g.fit(1)

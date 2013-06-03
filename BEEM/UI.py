@@ -185,6 +185,21 @@ def dualplot(bees,**kwds):
     mpl.ylabel('R (eV$^{-1}$)')
     return h,c
     
+def contour_dual(bees,N=None,bins=None,range=None,**kwds):
+    bh=np.abs([x.barrier_height for x in bees])
+    r=[x.trans_r for x in bees]
+    H,X,Y=np.histogram2d(r,bh,bins=bins,range=[range[1],range[0]])
+    extent = [Y[0], Y[-1], X[0], X[-1]]
+    if N==None:
+        N=int(H.max())-1
+    CS1=mpl.contourf(H,N,extent=extent,extend='min',**kwds)
+    c=mpl.colorbar()
+    CS2=mpl.contour(H,levels=CS1.levels,extent=extent,extend='min',colors='k')
+    c.add_lines(CS2)
+    mpl.xlabel('$\phi$ (eV)')
+    mpl.ylabel('R (eV$^{-1}$)')
+    return (CS1,c)
+    
 def mod():
     global PREF
     PREF['a']=2

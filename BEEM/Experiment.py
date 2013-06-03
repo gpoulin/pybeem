@@ -8,6 +8,7 @@ Created on Sat Jan  5 00:44:47 2013
 import numpy as np
 import scipy.optimize as op
 import pylab
+from matplotlib import ticker
 import multiprocessing as mp
 import time
 import scipy.constants as constants
@@ -87,6 +88,20 @@ class BEESData(Experiment):
         self.pass_number=-1
         self.x_index=-1
         self.y_index=-1
+        self.id=BEESID()
+        self.parent=None
+    
+    def __cmp__(self,other):
+        return self.id.__cmp__(other.id)
+        
+
+    def set_id(self):
+        self.id.x_index=self.x_index
+        self.id.y_index=self.y_index
+        self.id.mode=self.mode
+        self.id.number=self.number
+        self.id.pass_number=self.pass_number
+        
         
 class BEESFit(object):
     
@@ -107,6 +122,11 @@ class BEESFit(object):
         self.barrier_height_err=[None]
         self.trans_a_err=[None]
         self.noise_err=None
+        self.id=BEESFitID()
+        self.parent=None
+        
+    def __cmp__(self,other):
+        return self.id.__cmp__(other.id)
         
     @property
     def bias(self):
@@ -195,6 +215,44 @@ class BEESFit(object):
     @property
     def trans_r(self):
         return self.trans_a/np.mean(self.i_tunnel)
+        
+    def set_id(self):
+        self.id=BEESFitID()
+        for b in self.data:
+            self.id.bees.append(b.id)
+        
+        self.id.n=self.n
+        
+    def get_reverse_mode(self):
+        bid=self.id.switch_mode()
+        return self.parent.beesfit_dict[bid]
+        
+    def get_next_sweep(self):
+        bid=self.id.next_sweep()
+        if self.parent.beesfit_dict.has_key(bid):
+            return self.parent.beesfit_dict[bid]
+        else:
+            return None
+        
+    def get_previous_sweep(self):
+        bid=self.id.previous_sweep()
+        if self.parent.beesfit_dict.has_key(bid):
+            return self.parent.beesfit_dict[bid]
+        else:
+            return None
+            
+            
+    def get_same_pos(self,sweep,mode,pass_number=None):
+        if pass_number==None:
+            pass_number=self.data[0].pass_number
+        
+        k=self.id.copy()
+        for b in k.bees:
+            b.pass_number=pass_number
+            b.number=sweep
+            b.mode=mode
+        
+        return self.parent.beesfit_dict[k]
     
     def reset(self):
         self.barrier_height = None
@@ -255,22 +313,36 @@ class BEESFit(object):
             self.noise_err=np.inf
             
         
-    def export_plot(self,fig=1):
+    def export_plot(self,fig=1,**kwds):
         fig=pylab.figure(fig,figsize=(6,6),dpi=120)
-        pylab.rc('text', usetex=True)
-        p1,=pylab.plot(self.bias, self.i_beem/np.mean(self.i_tunnel),'ow')
+        if len(kwds)==0:
+            p1,=pylab.plot(self.bias, self.i_beem/np.mean(self.i_tunnel),'ow')
+        else:
+            p1,=pylab.plot(self.bias, self.i_beem/np.mean(self.i_tunnel),**kwds)
         pylab.hold(True)
         p2,=pylab.plot(self.bias_fitted,self.i_beem_estimated/np.mean(self.i_tunnel),'r',linewidth=2)       
-        pylab.xlabel('Bias (V)')
-        pylab.ylabel(r'BEEM Current, $\frac{I_b}{I_T}$')
+        pylab.xlabel('Bias (V)',weight='bold')
+        pylab.ylabel(r'BEEM Current $\mathbf{\frac{I_b}{I_T}}$',weight='bold')
         power=int(np.floor(np.log10(self.trans_r)))
-        val=self.trans_r/10**power
-        ypos=np.mean(pylab.ylim())
-        _,xpos=pylab.xlim()
-        t=pylab.text(xpos,ypos,
-                        r'\begin{tabular}{rcl} Barrier Height:&$%0.3f$&eV\\R:&$%0.3f\times10^{%d}$&eV$^{-1}$\end{tabular}'%(np.abs(self.barrier_height),val,power),
-                        horizontalalignment='right',verticalalignment='center')
-        pylab.legend(['BEES data','Fitted data'],loc=1,numpoints=1)        
+        val=self.trans_r/10**power    
+        pylab.legend(['BEES data','Fitted data'],loc=1,numpoints=1,frameon=False)
+        axis = pylab.axes()
+        fmt = ticker.ScalarFormatter(useOffset=False)
+        fmt.set_powerlimits((-2, 2))
+        axis.yaxis.set_major_formatter(fmt)        
+        ypos1,ypos2=pylab.ylim()
+        xpos1,xpos2=pylab.xlim()
+        width=xpos2-xpos1
+        height=ypos2-ypos1
+    
+        phi=pylab.text(xpos1+width*2.8/5,ypos1+height*4/5,r'$\phi$:',horizontalalignment='left',verticalalignment='top',fontsize=12,weight='bold') 
+        bh=pylab.text(xpos1+width*3.2/5,ypos1+height*4/5,'$%0.2f$'%(np.abs(self.barrier_height)),horizontalalignment='left',verticalalignment='top',fontsize=12,weight='bold')
+        ev=pylab.text(xpos1+width*4.3/5,ypos1+height*4/5,'eV',horizontalalignment='left',verticalalignment='top',fontsize=12,weight='bold')
+        R=pylab.text(xpos1+width*2.8/5,ypos1+height*3.4/5,'R:',horizontalalignment='left',verticalalignment='bottom',fontsize=12,weight='bold')
+        r=pylab.text(xpos1+width*3.2/5,ypos1+height*3.4/5,r'$%0.1f\times10^{%d}$'%(val,power),horizontalalignment='left',verticalalignment='bottom',fontsize=12,weight='bold')
+        ev1=pylab.text(xpos1+width*4.3/5,ypos1+height*3.4/5,'eV$^{-1}$',horizontalalignment='left',verticalalignment='bottom',fontsize=12,weight='bold')    
+        pylab.gcf().subplots_adjust(left=0.15,right=0.95)
+        t=[phi,bh,ev,R,r,ev1]
         return fig,t
     
     def auto_range_fit(self, barrier_height = -0.8, trans_a = 0.001, 
@@ -335,12 +407,16 @@ class Grid(Experiment):
         self.size_y = None
         self.num_x = None
         self.num_y = None
+        self.num_pass=None
+        self.num_sweep=None
         self.bees = []
         self.beesfit = []
         self.fit_method='auto_range_fit'
         self.completed=False
         self.xs=[]
         self.ys=[]
+        self.bees_dict=None
+        self.beesfit_dict=dict()
         
     def __add__(self,other):
         ret=Grid()
@@ -350,10 +426,15 @@ class Grid(Experiment):
         
     def normal_fit(self):
         self.beesfit=[BEESFit(self.bees[i]) for i in range(len(self.bees))]
+        for b in self.beesfit:
+            b.set_id()
+            self.beesfit_dict[b.id]=b
+            b.parent=self
         
     def set_n(self,n):
         for b in self.beesfit:
             b.n=n
+            
                     
     def fit(self,threads=1):
         
@@ -386,19 +467,45 @@ class Grid(Experiment):
             b.y_index=y_len[self.ys==b.pos_y][0]
             
     def set_pass_number(self):
-        for i in xrange(len(self.xs)):
-            for j in xrange(len(self.ys)):
-                bl=[b for b in self.bees if (b.x_index==i and b.y_index==j)]
-                bdate=np.unique([x.date for x in bl])
-                date_len=np.array(range(len(bdate)))
-                for k in bl:
-                    k.pass_number=date_len[bdate==k.date][0]+1
+        dic=dict()
+        for b in self.bees:
+            b.pass_number=1
+            b.set_id()
+            if dic.has_key(b.id):
+                dic[b.id].append(b)
+            else:
+                dic[b.id]=[b]
+        
+        for l in dic.values():
+            if len(l)==1:
+                pass
+            else:
+                l.sort(key=lambda x:x.date)
+                for i in range(2,len(l)):
+                    l[i].pass_number=i
                     
     def init_grid(self):
         self.set_coord()
         self.set_indexes()
         self.set_pass_number()
-                
+        self.num_x=len(self.xs)
+        self.num_y=len(self.ys)
+        self.num_sweep=max([x.number for x in self.bees])
+        self.num_pass=max([x.pass_number for x in self.bees])
+        self.bees_dict=dict()
+        for b in self.bees:
+            b.set_id()
+            self.bees_dict[b.id]=b
+            b.parent=self
+            
+    def update_dict(self):
+        self.init_grid()
+        self.beesfit_dict=dict()
+        for b in self.beesfit:
+            b.set_id()
+            b.parent=self
+            self.beesfit_dict[b.id]=b
+            
             
     def extract_good(self,r_squared=0.6):
         fit=np.array(self.beesfit)
@@ -413,7 +520,7 @@ class IV(Experiment):
         self.V=np.array([])
         self.I=np.array([])
         self.mode=MODE['fwd']
-        self.T=300.
+        self.T=300.0
         self.A=1.1e6
         self.W=np.pi*2.5e-4**2
         self.n=0
@@ -511,3 +618,120 @@ def BEES_position(bees_list):
      
     return (x,y,grid)
     
+class BEESID(object):
+    
+    def __init__(self):
+        self.x_index=0
+        self.y_index=0
+        self.pass_number=0
+        self.number=0
+        self.mode=MODE['fwd']
+    
+    def __hash__(self):
+        return self.mode+10*self.number+1000*self.pass_number+100000*self.y_index+100000000*self.x_index
+    
+    def __cmp__(self,other):
+        l=['x_index','y_index','pass_number','number','mode']
+        for x in l:
+            a=int.__cmp__(self.__getattribute__(x),other.__getattribute__(x))
+            if not(a==0):
+                return a
+            
+        return 0
+            
+    def copy(self):
+        k=BEESID()
+        k.x_index=self.x_index
+        k.y_index=self.y_index
+        k.pass_number=self.pass_number
+        k.number=self.number
+        k.mode=self.mode
+        return k
+    
+    def switch_mode(self):
+        k=self.copy()
+        
+        if k.mode==MODE['fwd']:
+            k.mode=MODE['bwd']
+        elif k.mode==MODE['bwd']:
+            k.mode=MODE['fwd']
+        
+        return k
+        
+    def next_sweep(self):
+        k=self.copy()
+        k.number+=1
+        return k
+    
+    def previous_sweep(self):
+        k=self.copy()
+        k.number-=1
+        return k
+        
+            
+    def __str__(self):
+        return '%03d_%03d_%03d_%03d_%02d'%(self.x_index,self.y_index,self.pass_number,self.number,self.mode)
+            
+        
+
+class BEESFitID(object):
+    
+    def __init__(self):
+        self.bees=[]
+        self.n=0
+        
+    def copy(self):
+        b=BEESFitID()
+        b.bees=self.bees[:]
+        b.n=self.n
+        return b
+        
+    def switch_mode(self):
+        b=self.copy()
+        for bt in range(len(b.bees)):
+            b.bees[bt]=b.bees[bt].switch_mode()
+        return b
+    
+    def next_sweep(self):
+        b=self.copy()
+        for bt in range(len(b.bees)):
+            b.bees[bt]=b.bees[bt].next_sweep()
+        return b
+
+    def previous_sweep(self):
+        b=self.copy()
+        for bt in range(len(b.bees)):
+            b.bees[bt]=b.bees[bt].previous_sweep()
+        return b
+    
+    
+    def __hash__(self):
+        h=0
+        self.bees.sort()
+        for x in self.bees:
+            h+=x.__hash__()
+        return h*100+int(10*self.n)
+        
+    
+    def __cmp__(self,other):
+        a=int.__cmp__(len(self.bees),len(other.bees))
+        if not(a==0):
+            return a
+        self.bees.sort()
+        other.bees.sort()
+        
+        for x in range(len(self.bees)):
+            a=self.bees[x].__cmp__(other.bees[x])
+            if not(a==0):
+                return a
+        
+        return int(np.sign(self.n-other.n))
+        
+    def __str__(self):
+        s=''
+        self.bees.sort()
+        for k in self.bees:
+            s+=str(k)+'__'
+        
+        s+='%2.2f'%self.n
+        return s
