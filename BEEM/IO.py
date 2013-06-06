@@ -46,17 +46,17 @@ def file2data(filename, lastHeader="[DATA]"):
     return data, name, dico
     
 def scan2data(filename):
-    f=file(filename,'r')
+    f=file(filename,'rb')
     s=f.readline()
     s=s.rstrip()
     
-    while s!=":SCANIT_END:":
-        if s==":DATA_INFO:":
+    while s!=b":SCANIT_END:":
+        if s==b":DATA_INFO:":
             s=f.readline()
             
         
     s=f.read(2)
-    while s!='\x1a\x04':
+    while s!=b'\x1a\x04':
         s[0]=s[1]
         s[1]=f.read(1)
     
@@ -119,8 +119,8 @@ def grid_from_3ds(filename):
     grid.src_file=filename
     param_list=[]
     
-    while line!=':HEADER_END:':
-        splited=line.split('=')
+    while line!=b':HEADER_END:':
+        splited=line.split(b'=')
         
         if not(splited):
             continue
@@ -129,38 +129,38 @@ def grid_from_3ds(filename):
         value=splited[1].strip()
      
         
-        if param=='Grid dim':
-            value=value.strip('"')
-            value=value.split('x')
+        if param==b'Grid dim':
+            value=value.strip(b'"')
+            value=value.split(b'x')
             grid.num_x=int(value[0].strip())
             grid.num_y=int(value[1].strip())
             
-        elif param=='Grid settings':
-            value=[float(x.strip()) for x in value.split(';')]
+        elif param==b'Grid settings':
+            value=[float(x.strip()) for x in value.split(b';')]
             grid.pos_x=value[0]
             grid.pos_y=value[1]
             grid.size_x=value[2]
             grid.size_y=value[3]
             
-        elif param=='Fixed parameters':
-            value=[ x.strip() for x in value.strip('"').split(';')]
+        elif param==b'Fixed parameters':
+            value=[ x.strip() for x in value.strip(b'"').split(b';')]
             for channel in value:
                 param_list.append(channel)
                 
-        elif param=='Experiment parameters':
-            value=[ x.strip() for x in value.strip('"').split(';')]
+        elif param==b'Experiment parameters':
+            value=[ x.strip() for x in value.strip(b'"').split(b';')]
             for channel in value:
                 param_list.append(channel)
                 
-        elif param=='Points':
+        elif param==b'Points':
             points=int(value)
             
-        elif param=='Channels':
+        elif param==b'Channels':
             channel_list=[ x.strip() for x in value.strip('"').split(';')]
         
-        elif param=='Date':
-            grid.date=datetime.datetime.strptime(value.strip('"'), 
-                                                 '%d.%m.%Y %H:%M:%S')
+        elif param==b'Date':
+            grid.date=datetime.datetime.strptime(value.strip(b'"'), 
+                                                 b'%d.%m.%Y %H:%M:%S')
         line=fid.readline().strip()
         
         
@@ -185,24 +185,24 @@ def grid_from_3ds(filename):
     
     for i in range(0,num):
         delta=i*length
-        pos_x=data[delta+param_dict['X (m)']]
-        pos_y=data[delta+param_dict['Y (m)']]
+        pos_x=data[delta+param_dict[b'X (m)']]
+        pos_y=data[delta+param_dict[b'Y (m)']]
         dico={'pos_x':pos_x, 'pos_y':pos_y, 'date':grid.date, 'src_file':grid.src_file}
         
-        if channel_dict.has_key('BEEM Current (A)'):
+        if channel_dict.has_key(b'BEEM Current (A)'):
             grid.bees.append(Experiment.BEESData(
-            bias = data[delta+param_num+channel_dict['Bias (V)']*points:param_num+channel_dict['Bias (V)']*points+points+delta:],
-            i_beem = data[delta+param_num+channel_dict['BEEM Current (A)']*points:param_num+channel_dict['BEEM Current (A)']*points+points+delta:],
-            i_tunnel = data[delta+param_num+channel_dict['Current (A)']*points:param_num+channel_dict['Current (A)']*points+points+delta:],
-            pos_z = data[delta+param_num+channel_dict['Z (m)']*points:param_num+channel_dict['Z (m)']*points+points+delta:],
+            bias = data[delta+param_num+channel_dict[b'Bias (V)']*points:param_num+channel_dict[b'Bias (V)']*points+points+delta:],
+            i_beem = data[delta+param_num+channel_dict[b'BEEM Current (A)']*points:param_num+channel_dict[b'BEEM Current (A)']*points+points+delta:],
+            i_tunnel = data[delta+param_num+channel_dict[b'Current (A)']*points:param_num+channel_dict[b'Current (A)']*points+points+delta:],
+            pos_z = data[delta+param_num+channel_dict[b'Z (m)']*points:param_num+channel_dict[b'Z (m)']*points+points+delta:],
             mode=Experiment.MODE['fwd'],**dico))
         
             grid.bees.append(Experiment.BEESData(
-            bias = data[delta+param_num+channel_dict['Bias [bwd] (V)']*points:param_num+channel_dict['Bias [bwd] (V)']*points+points+delta:],
-            i_beem = data[delta+param_num+channel_dict['BEEM Current [bwd] (A)']*points:param_num+channel_dict['BEEM Current [bwd] (A)']*points+points+delta:],
-            i_tunnel = data[delta+param_num+channel_dict['Current [bwd] (A)']*points:param_num+channel_dict['Current [bwd] (A)']*points+points+delta:],
-            pos_z = data[delta+param_num+channel_dict['Z [bwd] (m)']*points:param_num+channel_dict['Z [bwd] (m)']*points+points+delta:],
-            mode=Experiment.MODE['bwd'],**dico))
+            bias = data[delta+param_num+channel_dict[b'Bias [bwd] (V)']*points:param_num+channel_dict[b'Bias [bwd] (V)']*points+points+delta:],
+            i_beem = data[delta+param_num+channel_dict[b'BEEM Current [bwd] (A)']*points:param_num+channel_dict[b'BEEM Current [bwd] (A)']*points+points+delta:],
+            i_tunnel = data[delta+param_num+channel_dict[b'Current [bwd] (A)']*points:param_num+channel_dict[b'Current [bwd] (A)']*points+points+delta:],
+            pos_z = data[delta+param_num+channel_dict[b'Z [bwd] (m)']*points:param_num+channel_dict[b'Z [bwd] (m)']*points+points+delta:],
+            mode=Experiment.MODE[b'bwd'],**dico))
         
     
     return grid

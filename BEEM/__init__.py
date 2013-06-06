@@ -9,9 +9,6 @@ import pylab
 import numpy as np
 import scipy as sp
 
-
-
-
 def normplot(x,*arg,**kwarg):
     y=sp.special.erfinv(np.linspace(-1,1,len(x)+2)[1:-1:])
     sx=np.sort(x)
@@ -33,12 +30,17 @@ def cdfplot(x,*arg,**kwarg):
     y=np.linspace(0,1,len(x))
     sx=np.sort(x)
     pylab.plot(sx,y,*arg,**kwarg)
-    
-def launch_ipython():
-    import os
-    import rc
-    os.system('ipython --pylab=qt -i ' +  rc.RCDIR + '/ipy.py')
+
+def reload():
+    global BEEM=reload(BEEM)
+    global IO=reload(BEEM.IO)
+    global EXP=reload(BEEM.Experiment)
+    global UI=reload(BEEM.UI)
 
 def main():
-    launch_ipython()
-    
+    import os
+    from . import rc
+    os.system('ipython --pylab=qt -i ' +  rc.RCDIR + '/ipy.py')
+
+if __name__ == "__main__":
+    main()

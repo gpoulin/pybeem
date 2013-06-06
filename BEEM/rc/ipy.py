@@ -6,9 +6,12 @@ Created on Sat Jan  5 01:25:35 2013
 """
 import inspect, os, sys
 sys.path.append(os.path.abspath(os.path.dirname(inspect.getfile(inspect.currentframe()))+u'../../..'))
-from BEEM.IO import *
-from BEEM.Experiment import *
-from pylab import *
-from BEEM.UI import *
-load_pref()
-ion()
+import BEEM
+import BEEM.IO as IO
+import BEEM.Experiment as EXP
+import BEEM.UI as UI
+
+global BEEM=reload(BEEM)
+global IO=reload(BEEM.IO)
+global EXP=reload(BEEM.Experiment)
+global UI=reload(BEEM.UI)

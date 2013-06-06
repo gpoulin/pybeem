@@ -7,19 +7,17 @@ Created on Sat Jan  5 00:44:47 2013
 
 import numpy as np
 import scipy.optimize as op
-import pylab
-from matplotlib import ticker
 import multiprocessing as mp
-import time
 import scipy.constants as constants
-import warnings
 
+
+#Force error instead of warning
+import warnings
+warnings.simplefilter('error',RuntimeWarning)
 
 _use_pureC=True
-
 bell_kaiser_v=None
 residu_bell_kaiser_v=None
-warnings.simplefilter('error',RuntimeWarning)
 
 def use_pureC(val=True):
     global bell_kaiser_v,residu_bell_kaiser_v,_use_pureC
@@ -102,35 +100,41 @@ class BEESData(Experiment):
         self.id.number=self.number
         self.id.pass_number=self.pass_number
         
-        
 class BEESFit(object):
     
     def __init__(self,data=None):
         self.data = []
         self.add_data(data)
-        self.filter = None #no filter
-        self.trans_a = None
-        self.barrier_height = None
+        self.filter = None
+        self.trans_a = [None]
+        self.barrier_height = [None]
         self.noise = None
         self.n=2
-        self.combine = combine_mean
+        self.auto_range=True
+        self.range=0.4
+        self.barrier_height_init=[-0.8]
+        self.trans_a_init=[0.001]
+        self.noise_init=1e-9
+        self.combine = np.mean(x,0)
         self.method = BEEM_MODEL['bkv']
         self.bias_max=np.max(self.bias)
         self.bias_min=np.min(self.bias)
         self.positive=self.bias_min>0
-        self.updated = False
         self.barrier_height_err=[None]
         self.trans_a_err=[None]
         self.noise_err=None
         self.id=BEESFitID()
         self.parent=None
+        self._bias_max=self.bias_max
+        self._bias_min=self.bias_min
+        if data!=None:
+          self._index=[True]*len(self.bias)
         
     def __cmp__(self,other):
         return self.id.__cmp__(other.id)
         
     @property
     def bias(self):
-        
         if not(self.data):
             return None
         else:
@@ -138,12 +142,21 @@ class BEESFit(object):
     
     @property
     def index(self):
-        return  np.logical_and(self.bias < self.bias_max, 
-                               self.bias > self.bias_min)
+        if (self.bias_max!=self._bias_max or self.bias_min!=self._bias_min):
+          index=np.logical_and(self.bias <= self.bias_max, 
+                               self.bias >= self.bias_min)
+          self.index=index
+          self._bias_max=self.bias_max
+          self._bias_min=self.bias_min
+        return self._index
     
     @property
     def i_beem_fitted(self):
         return self.i_beem[self.index]
+
+    @property
+    def i_tunnel_fitted(self):
+        return self.i_tunnel[self.index]
         
     @property
     def bias_fitted(self):
@@ -156,14 +169,12 @@ class BEESFit(object):
         if self.method==BEEM_MODEL["bkv"]:
             return bell_kaiser_v(self.bias_fitted,self.n,
                         np.r_[self.noise, self.barrier_height,self.trans_a]);
-        
         return None
     
     @property
     def pos_x(self):
         if not(self.data):
-            return None
-        
+            return None        
         pos_x = np.array([t.pos_x for t in self.data])
         if all(pos_x == pos_x[0]):
             return pos_x[0]
@@ -173,8 +184,7 @@ class BEESFit(object):
     @property
     def pos_y(self):
         if not(self.data):
-            return None
-        
+            return None 
         pos_x = np.array([t.pos_y for t in self.data])
         if all(pos_x == pos_x[0]):
             return pos_x[0]
@@ -254,39 +264,23 @@ class BEESFit(object):
         
         return self.parent.beesfit_dict[k]
     
-    def reset(self):
-        self.barrier_height = None
-        self.trans_a = None
-        self.noise = None
-        self.updated = False
-    
     def add_data(self, data):
-        self.reset()
         if isinstance(data,BEESData):
             self.data.append(data)
         else:
-            for bees in data:
-                 self.data.append(bees)
+            self.data+=bees
+
+    def set_fitting(self,param):
+        self.update(param)
     
-    def fit(self, barrier_height = -0.8, trans_a = 0.001, noise = 1e-9):
-        
-        if barrier_height==None:
-            barrier_height=-0.8
-            
-        if trans_a==None:
-            barrier_height=0.001
-        
-        if noise==None:
-            noise=1e-9
-        
-        if barrier_height<self.bias_min or barrier_height>self.bias_max:
-            barrier_height=(self.bias_min+self.bias_max)/2
-        
+    def _fit(self, barrier_height = [-0.8], trans_a = [0.001], noise = 1e-9):
+
         try:
+            b=len(barrier_height)
             ydata=self.i_beem_fitted
             if self.method==BEEM_MODEL['bkv']:
                 func=residu_bell_kaiser_v
-                p0=[noise, barrier_height, trans_a]
+                p0=np.r_[noise,barrier_height,trans_a]
                 args=(self.bias_fitted,ydata,self.n)
             
             #Curve fit and compute error
@@ -297,65 +291,25 @@ class BEESFit(object):
             else:
                 pcov = np.inf
             
-            
-            self.barrier_height = popt[1]
-            self.trans_a = popt[2]
-            self.noise = popt[0]
-            self.barrier_height_err=np.sqrt(pcov[1,1])
-            self.trans_a_err=np.sqrt(pcov[2,2])
-            self.noise_err=np.sqrt(pcov[0,0])
+            err=np.diag(pcov)
+            return {'barrier_height':popt[1:b+1], 'trans_a':popt[b+1:2*b+1],'noise': popt[0], 
+                'barrier_height_err':np.sqrt(err[1:b+1]),'trans_a_err':np.sqrt(err[b+1:2*b+1])
+                'noise_err':np.sqrt(err[0])}
         except:
-            self.barrier_height = None
-            self.trans_a = None
-            self.noise = None
-            self.barrier_height_err=np.inf
-            self.trans_a_err=np.inf
-            self.noise_err=np.inf
-            
+          return {'barrier_height':[None],'trans_a':[None],'noise':None,
+              'barrier_height_err':[np.inf],'trans_a_err':[np.inf],'noise_err':np.inf}
         
-    def export_plot(self,fig=1,**kwds):
-        fig=pylab.figure(fig,figsize=(6,6),dpi=120)
-        if len(kwds)==0:
-            p1,=pylab.plot(self.bias, self.i_beem/np.mean(self.i_tunnel),'ow')
+    def _auto_range_fit(self, barrier_height = [-0.8], trans_a = [0.001], 
+                       noise = 1e-9, auto_range = 0.4, tol = 0.001, maxIt=10, conv_ratio=2/3):
+
+        conv_inv=1-conv_ratio
+        
+        a={'barrier_height':barrier_height,'trans_a':trans_a,'noise':noise}
+                
+        if barrier_height[0]<0:
+            self.bias_min=barrier_height[0]-auto_range
         else:
-            p1,=pylab.plot(self.bias, self.i_beem/np.mean(self.i_tunnel),**kwds)
-        pylab.hold(True)
-        p2,=pylab.plot(self.bias_fitted,self.i_beem_estimated/np.mean(self.i_tunnel),'r',linewidth=2)       
-        pylab.xlabel('Bias (V)',weight='bold')
-        pylab.ylabel(r'BEEM Current $\mathbf{\frac{I_b}{I_T}}$',weight='bold')
-        power=int(np.floor(np.log10(self.trans_r)))
-        val=self.trans_r/10**power    
-        pylab.legend(['BEES data','Fitted data'],loc=1,numpoints=1,frameon=False)
-        axis = pylab.axes()
-        fmt = ticker.ScalarFormatter(useOffset=False)
-        fmt.set_powerlimits((-2, 2))
-        axis.yaxis.set_major_formatter(fmt)        
-        ypos1,ypos2=pylab.ylim()
-        xpos1,xpos2=pylab.xlim()
-        width=xpos2-xpos1
-        height=ypos2-ypos1
-    
-        phi=pylab.text(xpos1+width*2.8/5,ypos1+height*4/5,r'$\phi$:',horizontalalignment='left',verticalalignment='top',fontsize=12,weight='bold') 
-        bh=pylab.text(xpos1+width*3.2/5,ypos1+height*4/5,'$%0.2f$'%(np.abs(self.barrier_height)),horizontalalignment='left',verticalalignment='top',fontsize=12,weight='bold')
-        ev=pylab.text(xpos1+width*4.3/5,ypos1+height*4/5,'eV',horizontalalignment='left',verticalalignment='top',fontsize=12,weight='bold')
-        R=pylab.text(xpos1+width*2.8/5,ypos1+height*3.4/5,'R:',horizontalalignment='left',verticalalignment='bottom',fontsize=12,weight='bold')
-        r=pylab.text(xpos1+width*3.2/5,ypos1+height*3.4/5,r'$%0.1f\times10^{%d}$'%(val,power),horizontalalignment='left',verticalalignment='bottom',fontsize=12,weight='bold')
-        ev1=pylab.text(xpos1+width*4.3/5,ypos1+height*3.4/5,'eV$^{-1}$',horizontalalignment='left',verticalalignment='bottom',fontsize=12,weight='bold')    
-        pylab.gcf().subplots_adjust(left=0.15,right=0.95)
-        t=[phi,bh,ev,R,r,ev1]
-        return fig,t
-    
-    def auto_range_fit(self, barrier_height = -0.8, trans_a = 0.001, 
-                       noise = 1e-9, auto_range = 0.4, tol = 0.001):
-        self.barrier_height = barrier_height
-        self.trans_a = trans_a
-        self.noise = noise
-        
-        
-        if barrier_height<0:
-            self.bias_min=barrier_height-auto_range
-        else:
-            self.bias_max=barrier_height+auto_range
+            self.bias_max=barrier_height[0]+auto_range
         
         if self.bias_max<0:
             lim=min(self.bias)
@@ -363,38 +317,36 @@ class BEESFit(object):
             lim=max(self.bias)
             
         
-        for i in range(0,10):
-            self.fit(self.barrier_height, self.trans_a, self.noise)
+        for i in range(maxIt):
+            b=self._fit(a['barrier_height'],a['trans_a'], a['noise'])
+
+            if np.abs(b['barrier_height'][0]-a['barrier_height'][0])<tol:
+              break
             
             #if barrier not found look further
-            if self.barrier_height==None or np.abs(self.barrier_height_err/self.barrier_height)>0.04:
-                self.barrier_height = barrier_height
-                self.trans_a = trans_a
-                self.noise = noise
+            if b['barrier_height'][0]==None or b['barrier_height'][0]>self.bias_max or b['barrier_height'][0]<self.bias_min or np.abs(b['barrier_height_err'][0]/b['self.barrier_height'][0])>0.04:
                 if self.bias_max<0:
                     self.bias_min=max(self.bias_min-auto_range,lim)
                 else:
                     self.bias_max=min(self.bias_max+auto_range,lim)
             else:
-                if np.abs(barrier_height-self.barrier_height)<tol:
-                    return
-                if self.barrier_height>self.bias_max or self.barrier_height<self.bias_min:
-                    self.barrier_height=(self.bias_max+self.bias_min)/2
-                if self.barrier_height<0:
-                    self.bias_min=(2*self.barrier_height+barrier_height)/3-auto_range
+                if self.bias_max<0:
+                    self.bias_min=conv_ratio*b['barrier_height'][0]+conv_inv*a['barrier_height'][0]-auto_range
                 else:
-                    self.bias_max=(2*self.barrier_height+barrier_height)/3+auto_range
-                barrier_height=self.barrier_height
-        
-        if self.r_squared<0.1:
-            self.barrier_height=None
-            self.trans_a=None
-            self.noise=None            
-            
+                    self.bias_max=conv_ratio*b['barrier_height'][0]+conv_inv*a['barrier_height'][0]+auto_range
+                a=b
+
+        return b
+  
+    def fit():
+        _fit()
+
+    def fit_update(self,*arg,**kwarg):
+        self.update(self.fit(*arg,**kwarg))
         
     @property
     def r_squared(self):
-      return r_squared(self.i_beem_fitted,self.i_beem_estimated)
+        return r_squared(self.i_beem_fitted,self.i_beem_estimated)
         
     
 
@@ -411,7 +363,6 @@ class Grid(Experiment):
         self.num_sweep=None
         self.bees = []
         self.beesfit = []
-        self.fit_method='auto_range_fit'
         self.completed=False
         self.xs=[]
         self.ys=[]
@@ -437,23 +388,22 @@ class Grid(Experiment):
             
                     
     def fit(self,threads=1):
-        
-        t1=time.time()
+        from time import time
+        t1=time()
         if threads==1:     
             for x in self.beesfit:
-                x.auto_range_fit()
+                x.fit_update()
         else:
             if threads==-1:
                 p=mp.Pool()
             else:
                 p=mp.Pool(threads)
-            beesfit=p.map(fit_para,self.beesfit)
+            beesfit=p.map(lamda x:x.fit(),self.beesfit)
             p.close()
-            for i in range(0,len(beesfit)):
-                for x in beesfit[i].keys():
-                    self.beesfit[i].__setattr__(x,beesfit[i][x])
-        t2=time.time()
-        print t2-t1
+            for i in range(len(beesfit)):
+                self.beesfit[i].update(beesfit[i])
+        t2=time()
+        print(t2-t1)
         
     def set_coord(self):
         self.xs = np.unique(filter(lambda x: not(x==None),[b.pos_x for b in self.bees]))
@@ -556,28 +506,7 @@ class IV(Experiment):
         self.barrier_height=popt[0]
         self.n=popt[1]
         self.r_squared=r_squared(np.log(np.abs(self.I_fitted)),self._model_fit(self.V_fitted,popt[0],popt[1]))
-    
-        
-    
-                
-        
-def fit_para(x):
-    '''Fit BEES and return a dict of the optimal parameters. \
-    Useful for multiprocessing otherwise simply x.auto_range_fit()
-    
-    Args:
-        x (BEESFit): BEES to fit
-        
-    Return:
-        dict. Dictionnary containing all the attributes of x that need to be\
-            modifed to be fitted fitted
-    '''
-    x.auto_range_fit()
-    return {'barrier_height':x.barrier_height,'trans_a':x.trans_a,'noise':x.noise,
-        'barrier_height_err':x.barrier_height_err,'trans_a_err':x.trans_a_err,'noise_err':x.noise_err,
-        'bias_max':x.bias_max,'bias_min':x.bias_min}
 
-    
 
 def r_squared(y_sampled, y_estimated):
     """Give the correlation coefficient between sampled data eand estimate data
