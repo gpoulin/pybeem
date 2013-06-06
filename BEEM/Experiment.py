@@ -9,7 +9,7 @@ import numpy as np
 import scipy.optimize as op
 import multiprocessing as mp
 import scipy.constants as constants
-
+from multiprocessing.pool import ThreadPool
 
 #Force error instead of warning
 import warnings
@@ -29,16 +29,16 @@ def use_pureC(val=True):
         except :
             pass
         
-    bell_kaiser_v=_purePython.bell_kaiser_v
-    residu_bell_kaiser_v=_purePython.residu_bell_kaiser_v
+        bell_kaiser_v=_purePython.bell_kaiser_v
+        residu_bell_kaiser_v=_purePython.residu_bell_kaiser_v
 
 import _purePython as _purePython
 
 try:
-    import _pureC as _pureC
-    use_pureC(True)
+  import _pureC as _pureC
+  use_pureC(True)
 except ImportError:
-    use_pureC(False)
+  use_pureC(False)
     
 
 MODE = {'fwd':0, 'bwd':1} #Enum to store if in the foward or backward mode
@@ -115,7 +115,7 @@ class BEESFit(object):
         self.barrier_height_init=[-0.8]
         self.trans_a_init=[0.001]
         self.noise_init=1e-9
-        self.combine = np.mean(x,0)
+        self.combine = combine_mean
         self.method = BEEM_MODEL['bkv']
         self.bias_max=np.max(self.bias)
         self.bias_min=np.min(self.bias)
@@ -133,6 +133,10 @@ class BEESFit(object):
     def __cmp__(self,other):
         return self.id.__cmp__(other.id)
         
+    def update(self,dic):
+        for key in dic:
+            setattr(self,key,dic[key])
+
     @property
     def bias(self):
         if not(self.data):
@@ -145,7 +149,7 @@ class BEESFit(object):
         if (self.bias_max!=self._bias_max or self.bias_min!=self._bias_min):
           index=np.logical_and(self.bias <= self.bias_max, 
                                self.bias >= self.bias_min)
-          self.index=index
+          self._index=index
           self._bias_max=self.bias_max
           self._bias_min=self.bias_min
         return self._index
@@ -239,14 +243,14 @@ class BEESFit(object):
         
     def get_next_sweep(self):
         bid=self.id.next_sweep()
-        if self.parent.beesfit_dict.has_key(bid):
+        if bid in self.parent.beesfit_dict:
             return self.parent.beesfit_dict[bid]
         else:
             return None
         
     def get_previous_sweep(self):
         bid=self.id.previous_sweep()
-        if self.parent.beesfit_dict.has_key(bid):
+        if bid in self.parent.beesfit_dict:
             return self.parent.beesfit_dict[bid]
         else:
             return None
@@ -281,26 +285,30 @@ class BEESFit(object):
             if self.method==BEEM_MODEL['bkv']:
                 func=residu_bell_kaiser_v
                 p0=np.r_[noise,barrier_height,trans_a]
+                #p0=[noise]+barrier_height+trans_a
+                #print(p0)
                 args=(self.bias_fitted,ydata,self.n)
+           
             
             #Curve fit and compute error
             popt, pcov,info,mesg,ier = op.leastsq(func,p0,args,maxfev=2000,full_output=1)
             if (len(ydata) > len(p0)) and pcov is not None:
                 s_sq = (func(popt, *args)**2).sum()/(len(ydata)-len(p0))
                 pcov = pcov * s_sq
+                err=np.diag(pcov)
             else:
                 pcov = np.inf
+                err=[np.inf]*(1+2*b)
             
-            err=np.diag(pcov)
             return {'barrier_height':popt[1:b+1], 'trans_a':popt[b+1:2*b+1],'noise': popt[0], 
-                'barrier_height_err':np.sqrt(err[1:b+1]),'trans_a_err':np.sqrt(err[b+1:2*b+1])
+                'barrier_height_err':np.sqrt(err[1:b+1]),'trans_a_err':np.sqrt(err[b+1:2*b+1]),
                 'noise_err':np.sqrt(err[0])}
         except:
-          return {'barrier_height':[None],'trans_a':[None],'noise':None,
-              'barrier_height_err':[np.inf],'trans_a_err':[np.inf],'noise_err':np.inf}
+            return {'barrier_height':[None],'trans_a':[None],'noise':None,
+                'barrier_height_err':[np.inf],'trans_a_err':[np.inf],'noise_err':np.inf}
         
     def _auto_range_fit(self, barrier_height = [-0.8], trans_a = [0.001], 
-                       noise = 1e-9, auto_range = 0.4, tol = 0.001, maxIt=10, conv_ratio=2/3):
+                       noise = 1e-9, auto_range = 0.4, tol = 0.001, maxIt=10, conv_ratio=1):
 
         conv_inv=1-conv_ratio
         
@@ -319,12 +327,14 @@ class BEESFit(object):
         
         for i in range(maxIt):
             b=self._fit(a['barrier_height'],a['trans_a'], a['noise'])
+            if b['barrier_height']==a['barrier_height']:
+              b=self._fit(a['barrier_height']*1.1,a['trans_a']*0.1, a['noise'])
 
-            if np.abs(b['barrier_height'][0]-a['barrier_height'][0])<tol:
+            if b['barrier_height'][0]!=None and np.abs(b['barrier_height'][0]-a['barrier_height'][0])<tol:
               break
             
             #if barrier not found look further
-            if b['barrier_height'][0]==None or b['barrier_height'][0]>self.bias_max or b['barrier_height'][0]<self.bias_min or np.abs(b['barrier_height_err'][0]/b['self.barrier_height'][0])>0.04:
+            if b['barrier_height'][0]==None or b['barrier_height'][0]>self.bias_max or b['barrier_height'][0]<self.bias_min or np.abs(b['barrier_height_err'][0]/b['barrier_height'][0])>0.2:
                 if self.bias_max<0:
                     self.bias_min=max(self.bias_min-auto_range,lim)
                 else:
@@ -335,11 +345,15 @@ class BEESFit(object):
                 else:
                     self.bias_max=conv_ratio*b['barrier_height'][0]+conv_inv*a['barrier_height'][0]+auto_range
                 a=b
+        
+        if(np.abs(b['barrier_height_err'][0]/b['barrier_height'][0])>0.1):
+            b={'barrier_height':[None],'trans_a':[None],'noise':None,
+                'barrier_height_err':[np.inf],'trans_a_err':[np.inf],'noise_err':np.inf}
 
         return b
   
-    def fit():
-        _fit()
+    def fit(self):
+        return self._auto_range_fit()
 
     def fit_update(self,*arg,**kwarg):
         self.update(self.fit(*arg,**kwarg))
@@ -393,12 +407,16 @@ class Grid(Experiment):
         if threads==1:     
             for x in self.beesfit:
                 x.fit_update()
+                #if x.barrier_height[0]==None:
+                #    print('pos:%d,%d bh:None'%(x.data[0].x_index,x.data[0].y_index))
+                #else:
+                #    print('pos:%d,%d bh:%1.7f'%(x.data[0].x_index,x.data[0].y_index,x.barrier_height[0]))
         else:
             if threads==-1:
                 p=mp.Pool()
             else:
                 p=mp.Pool(threads)
-            beesfit=p.map(lamda x:x.fit(),self.beesfit)
+            beesfit=p.map(fit_para,self.beesfit)
             p.close()
             for i in range(len(beesfit)):
                 self.beesfit[i].update(beesfit[i])
@@ -421,7 +439,7 @@ class Grid(Experiment):
         for b in self.bees:
             b.pass_number=1
             b.set_id()
-            if dic.has_key(b.id):
+            if b.id in dic:
                 dic[b.id].append(b)
             else:
                 dic[b.id]=[b]
@@ -461,6 +479,9 @@ class Grid(Experiment):
         fit=np.array(self.beesfit)
         r=np.array([x.r_squared for x in fit])
         return fit[np.logical_and(r>r_squared,r<1)]
+
+def fit_para(x):
+    return x.fit()
         
         
 class IV(Experiment):
@@ -557,7 +578,7 @@ class BEESID(object):
         self.mode=MODE['fwd']
     
     def __hash__(self):
-        return self.mode+10*self.number+1000*self.pass_number+100000*self.y_index+100000000*self.x_index
+        return int(self.mode+10*self.number+1000*self.pass_number+100000*self.y_index+100000000*self.x_index)
     
     def __cmp__(self,other):
         l=['x_index','y_index','pass_number','number','mode']
@@ -639,7 +660,7 @@ class BEESFitID(object):
         self.bees.sort()
         for x in self.bees:
             h+=x.__hash__()
-        return h*100+int(10*self.n)
+        return int(h*100+10*self.n)
         
     
     def __cmp__(self,other):

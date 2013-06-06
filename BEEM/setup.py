@@ -8,5 +8,4 @@ extC=Extension("_pureC", ["pureC.c"],include_dirs=numpy.distutils.misc_util.get_
 
 setup(
   ext_modules=[extC],
-  cmdclass = {'build_ext': build_ext}
 )

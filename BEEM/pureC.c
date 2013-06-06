@@ -27,14 +27,33 @@ static PyMethodDef module_methods[] = {
   {NULL,NULL,0,NULL}
 };
 
-//Initialize the module and numpy
-PyMODINIT_FUNC init_pureC(void)
+
+static struct PyModuleDef _pureCmodule = {
+   PyModuleDef_HEAD_INIT,
+   "_pureC",   /* name of module */
+   module_docstring, /* module documentation, may be NULL */
+   -1,       /* size of per-interpreter state of the module,
+                or -1 if the module keeps state in global variables. */
+   module_methods
+};
+
+
+PyMODINIT_FUNC
+PyInit__pureC(void)
 {
-  PyObject *m = Py_InitModule3("_pureC", module_methods, module_docstring);
-  if (m==NULL)
-    return;
-  import_array();
+    import_array();
+    return PyModule_Create(&_pureCmodule);
 }
+
+
+//Initialize the module and numpy
+//PyMODINIT_FUNC init_pureC(void)
+//{
+  //PyObject *m = Py_InitModule3("_pureC", module_methods, module_docstring);
+  //if (m==NULL)
+    //return;
+  //import_array();
+//}
 
 static PyObject *bell_kaiser_v(PyObject *self, PyObject *args)
 {
@@ -96,9 +115,12 @@ static PyObject *residu_bell_kaiser_v(PyObject *self, PyObject *args)
   dim=(npy_intp)l;
   res=PyArray_EMPTY(1,&dim,NPY_DOUBLE,0);
   dres=(double*)PyArray_DATA(res);
+  
+
+  double* temp=(double*)PyArray_DATA(bias_array);
 
   //calcul beem for bell_kaiser_v
-  _bell_kaiser_v(l,(double*)PyArray_DATA(bias_array),dres,n ,dparams[0],n_barriers,dparams+1,dparams+1+n_barriers);
+  _bell_kaiser_v(l,temp,dres,n ,dparams[0],n_barriers,dparams+1,dparams+1+n_barriers);
 
   //calcul residu
   for(i=0;i<l;i++)

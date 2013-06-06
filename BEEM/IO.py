@@ -64,7 +64,7 @@ def scan2data(filename):
 def BEESFromFile(filename,dic={'beem':'BEEM Current'}):
     data, name, dico = file2data(filename)
     BEES=[]
-    if name.has_key('BEEM Current (A)'):
+    if 'BEEM Current (A)' in name:
         BEES.append(Experiment.BEESData(
             bias = data[:,name['Bias (V)']],
             i_beem = data[:,name['BEEM Current (A)']],
@@ -81,7 +81,7 @@ def BEESFromFile(filename,dic={'beem':'BEEM Current'}):
             
     else:
         i=1
-        while name.has_key('Bias [%05i] (V)'%i):
+        while 'Bias [%05i] (V)'%i in name:
             BEES.append(Experiment.BEESData(
                 bias = data[:,name['Bias [%05i] (V)'%i]],
                 i_beem = data[:,name[dic['beem']+ ' [%05i] (A)'%i]],
@@ -156,11 +156,11 @@ def grid_from_3ds(filename):
             points=int(value)
             
         elif param==b'Channels':
-            channel_list=[ x.strip() for x in value.strip('"').split(';')]
+            channel_list=[ x.strip() for x in value.strip(b'"').split(b';')]
         
         elif param==b'Date':
-            grid.date=datetime.datetime.strptime(value.strip(b'"'), 
-                                                 b'%d.%m.%Y %H:%M:%S')
+            grid.date=datetime.datetime.strptime(str(value.strip(b'"'),'utf_8'), 
+                                                 '%d.%m.%Y %H:%M:%S')
         line=fid.readline().strip()
         
         
@@ -189,7 +189,7 @@ def grid_from_3ds(filename):
         pos_y=data[delta+param_dict[b'Y (m)']]
         dico={'pos_x':pos_x, 'pos_y':pos_y, 'date':grid.date, 'src_file':grid.src_file}
         
-        if channel_dict.has_key(b'BEEM Current (A)'):
+        if b'BEEM Current (A)' in channel_dict :
             grid.bees.append(Experiment.BEESData(
             bias = data[delta+param_num+channel_dict[b'Bias (V)']*points:param_num+channel_dict[b'Bias (V)']*points+points+delta:],
             i_beem = data[delta+param_num+channel_dict[b'BEEM Current (A)']*points:param_num+channel_dict[b'BEEM Current (A)']*points+points+delta:],
@@ -202,14 +202,14 @@ def grid_from_3ds(filename):
             i_beem = data[delta+param_num+channel_dict[b'BEEM Current [bwd] (A)']*points:param_num+channel_dict[b'BEEM Current [bwd] (A)']*points+points+delta:],
             i_tunnel = data[delta+param_num+channel_dict[b'Current [bwd] (A)']*points:param_num+channel_dict[b'Current [bwd] (A)']*points+points+delta:],
             pos_z = data[delta+param_num+channel_dict[b'Z [bwd] (m)']*points:param_num+channel_dict[b'Z [bwd] (m)']*points+points+delta:],
-            mode=Experiment.MODE[b'bwd'],**dico))
+            mode=Experiment.MODE['bwd'],**dico))
         
     
     return grid
     
     
 def iv_from_file(filename,dic={}):
-    if not(dic.has_key('Current')):
+    if not('Current' in dic):
         dic['Current']='IV Current'
     data,name,other=file2data(filename)
     a=[Experiment.IV(),Experiment.IV()]
@@ -227,8 +227,8 @@ def ivs_from_file(filenames,dic={}):
     return list
     
 if __name__ == "__main__":
-    g=grid_from_3ds('/home/guillaume/Dropbox/nus/master/BEEM/2012-12-26/Grid_HfO-3_D3_009.3ds')
+    g=grid_from_3ds('/run/media/guillaume/D4D0-B7A7/2013-04-22/Grid Spectroscopy_Au-sp5-w5_C2_001.3ds')
     g.init_grid()    
     g.normal_fit()
     Experiment.use_pureC(True)
-    g.fit(1)
+    g.fit(-1)
