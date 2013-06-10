@@ -1,9 +1,5 @@
 #!/usr/bin/python3
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Dec  8 14:00:12 2012
-
-@author: Guillaume Poulin
+"""Module that implement all the user interface related functions and classes.
 """
 
 import sip
@@ -18,92 +14,79 @@ from PyQt4 import QtGui, QtCore
  
 import pyqtgraph as pg
 import numpy as np
-from .IO import grid_from_3ds
+from .io import grid_from_3ds
 import os
 import json
 import matplotlib.pyplot as mpl
 
-Signal = QtCore.pyqtSignal
-Slot = QtCore.pyqtSlot
-Property = QtCore.pyqtProperty
-#app=QtGui.QApplication([])
+signal = QtCore.pyqtSignal
+slot = QtCore.pyqtSlot
+property = QtCore.pyqtProperty
 
-PREF = dict()
+_pref = dict()
 
-class BeesFitGraph(pg.PlotWidget):
+class BEESFitGraph(pg.PlotWidget):
 
     def __init__(self,parent=None):
         super().__init__(parent)
-        ploti = self.getPlotItem()
+        plot = self.getPlotItem()
         self.label = pg.TextItem(anchor=(1, 0))
-        ploti.setLabel('left', u'BEEM Current','A')
-        ploti.setLabel('bottom', u'Bias','V')
+        plot.setLabel('left', 'BEEM Current','A')
+        plot.setLabel('bottom', 'Bias','V')
         self.region = pg.LinearRegionItem([0, 1])
         self.region.sigRegionChanged.connect(self.fit)
-        ploti.sigRangeChanged.connect(self._updatePos)
-        ploti.addItem(self.region)
-        ploti.addItem(self.label)
-        self.cara = ploti.plot([np.nan], [np.nan])
-        self.fitted = ploti.plot([np.nan], [np.nan], pen='r')
+        plot.sigRangeChanged.connect(self._update_pos)
+        plot.addItem(self.region)
+        plot.addItem(self.label)
+        self.cara = plot.plot([np.nan], [np.nan])
+        self.fitted = plot.plot([np.nan], [np.nan], pen='r')
         self.beesfit = None
 
-    def _updatePos(self):
-        ploti = self.getPlotItem()
-        geo = ploti.viewRange()
+    def _update_pos(self):
+        plot = self.getPlotItem()
+        geo = plot.viewRange()
         x = geo[0][1]
         y = geo[1][1]
         self.label.setPos(x, y)
 
-    def _updateBeem(self):
+    def _update_beem(self):
         self.cara.setData(self.beesfit.bias, self.beesfit.i_beem)
 
-    def _updateFitted(self):
-        try:
-            if self.beesfit.i_beem_estimated==None:
-                self.fitted.setData([np.nan], [np.nan])
-            else:
-                self.fitted.setData(self.beesfit.bias_fitted,
-                                    self.beesfit.i_beem_estimated)
-
-            r = np.sqrt(self.beesfit.r_squared)
-            if np.isnan(r):
-                r=0
-            if not(self.beesfit.barrier_height[0]==None):
-                self.label.setText(u"Vbh=%0.5f, R=%0.5f" %\
-                        (self.beesfit.barrier_height[0],r))
-        
-            self.getPlotItem().autoRange()
-
-        except:
-            pass
+    def _update_fitted(self):
+        if self.beesfit.i_beem_estimated==None:
+            self.fitted.setData([np.nan], [np.nan])
+        else:
+            self.fitted.setData(self.beesfit.bias_fitted,
+                self.beesfit.i_beem_estimated)
 
     def fit(self):
-        Vmin, Vmax = self.region.getRegion()
+        vmin, vmax = self.region.getRegion()
         b=self.beesfit
-        b.bias_max = Vmax
-        b.bias_min = Vmin
+        b.bias_max = vmax
+        b.bias_min = vmin
         if b.r_squared>0.1:
-            b.fit_update(auto=False,barrier_height=b.barrier_height, trans_a=b.trans_a, noise=b.noise)
+            b.fit_update(auto=False,barrier_height=b.barrier_height,
+                    trans_a=b.trans_a, noise=b.noise)
         else:
             b.fit_update(auto=False)
-        self._updateFitted()
+        self._update_fitted()
 
 
-    def setBees(self, beesfit):
+    def set_bees(self, beesfit):
         self.beesfit = beesfit
         self.region.setRegion([beesfit.bias_min, beesfit.bias_max])
-        self._updateBeem()
-        self._updateFitted()
+        self._update_beem()
+        self._update_fitted()
         self.getPlotItem().autoRange()
 
 
-class BeesSelector(QtGui.QDialog):
-    def __init__(self,beesList,parent=None):
+class BEESSelector(QtGui.QDialog):
+    def __init__(self,bees_list,parent=None):
         super().__init__(parent)
-        self.beesList=beesList
+        self.beesList=bees_list
         self.index=0
-        self.selected=[True]*len(beesList)
-        self.fitter=BeesFitGraph()
+        self.selected=[True]*len(bees_list)
+        self.fitter=BEESFitGraph()
         self.label=QtGui.QLabel()
         self.ne=QtGui.QPushButton("Next")
         self.pr=QtGui.QPushButton("Previous")
@@ -122,19 +105,19 @@ class BeesSelector(QtGui.QDialog):
         vbox.addLayout(hbox)
 
         self.setLayout(vbox)
-        self.connect(self.ne,QtCore.SIGNAL('clicked()'),self.goNext)
-        self.connect(self.pr,QtCore.SIGNAL('clicked()'),self.goPrev)
-        self.connect(self.check,QtCore.SIGNAL('clicked()'),self.onChange)
+        self.ne.clicked.connect(self.go_next)
+        self.pr.clicked.connect(self.go_prev)
+        self,check.stateChanged.connect(self.on_change)
         self._update()
     
-    def onChange(self):
-        if self.check.isChecked():
+    def on_change(self,a):
+        if a>0:
             self.selected[self.index]=True
         else:
             self.selected[self.index]=False
 
     def _update(self):
-        self.fitter.setBees(self.beesList[self.index])
+        self.fitter.set_bees(self.bees_list[self.index])
         self.pr.setEnabled(True)
         self.ne.setText("Next")
         if self.index==0:
@@ -145,67 +128,67 @@ class BeesSelector(QtGui.QDialog):
             self.check.setChecked(True)
         else:
             self.check.setChecked(False)
-        self.label.setText(str(self.index+1)+"/"+str(len(self.beesList)))
+        self.label.setText(str(self.index+1)+"/"+str(len(self.bees_list)))
 
-    def goNext(self):
-        if self.index==len(self.beesList)-1:
+    def go_next(self):
+        if self.index==len(self.bees_list)-1:
             self.done(1)
         else:
             self.index+=1
         self._update()
     
-    def goPrev(self):
+    def go_prev(self):
         self.index-=1
         self._update()
 
 
-def selectBees(beesList):
-    a=BeesSelector(beesList)
+def select_bees(bees_list):
+    a=BEESSelector(bees_list)
     a.exec_()
-    beesList=np.array(beesList)
-    return beesList[np.array(a.selected)]
+    bees_list=np.array(bees_list)
+    return bees_list[np.array(a.selected)]
 
-def selectFile(folder = None, filter = None, selected_filter = None):
+def select_file(folder = None, filter = None, selected_filter = None):
     filename = QtGui.QFileDialog.getOpenFileName(directory = folder, 
                         filter = filter, selectedFilter = selected_filter)
     return filename
 
 def open3ds(filename = None, folder = None):
     if filename == None:
-        filename = selectFile(folder=folder, filter=u'3ds (*.3ds)')
-    return gridFrom3ds(filename)
+        filename = select_file(folder=folder, filter=u'3ds (*.3ds)')
+    return grid_from_3ds(filename)
     
-def findConfig():
+def find_config():
     if os.name == 'posix':
-        folder = os.path.expanduser(u'~/.pybeem')
+        folder = os.path.expanduser('~/.pybeem')
     elif os.name == 'nt':
-        folder = os.path.expandvars(u'%APPDATA%/pybeem')
+        folder = os.path.expandvars('%APPDATA%/pybeem')
     else:
-        raise Exception(u"Don't know where to save config. OS unknown")
+        raise Exception("Don't know where to save config. OS unknown")
     
     if not os.path.exists(folder):
         os.makedirs(folder)
-    return folder + u'/pybeem.conf'
+    return folder + '/pybeem.conf'
 
-def savePref(filename = None):
+def save_pref(filename = None):
     if filename == None:
-        filename = findConfig()
+        filename = find_config()
     fid = open(filename,'w')
-    json.dump(PREF,fid)
+    json.dump(_pref,fid)
     fid.close()
 
-def loadPref(filename = None):
-    global PREF
+def load_pref(filename = None):
+    global _pref
     if filename == None:
-        filename = findConfig()
+        filename = find_config()
     if os.path.exists(filename):
         fid = open(filename,'r')
-        PREF.update(json.load(fid))
+        _pref.update(json.load(fid))
         fid.close()
 
-def fitFile(filename = None, folder = None):
+def fit_file(filename = None, folder = None):
     if folder == None:
-        folder = PREF[u'work_folder']
+        folder = _pref['work_folder']
     g = open3ds(filename, folder)
     g.normal_fit()
     g.fit(-1)
@@ -237,5 +220,5 @@ def contourDual(bees,N=None,bins=None,range=None,**kwds):
     
     
 if __name__ == "__main__":
-    loadPref()
-    print(PREF)
+    load_pref()
+    print(_pref)

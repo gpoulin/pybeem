@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Created on Sat Dec  8 15:19:09 2012
 
@@ -13,34 +12,23 @@ def normplot(x,*arg,**kwarg):
     y=sp.special.erfinv(np.linspace(-1,1,len(x)+2)[1:-1:])
     sx=np.sort(x)
     pylab.plot(sx,y,*arg,**kwarg)
-    
-    p = np.array([0.001, 0.003, 0.01, 0.02, 0.05, 0.10, 0.25, 0.5, 0.75, 0.90, 
+
+    p = np.array([0.001, 0.003, 0.01, 0.02, 0.05, 0.10, 0.25, 0.5, 0.75, 0.90,
                   0.95, 0.98, 0.99, 0.997, 0.999])
-                  
+
     label = np.array(['0.001', '0.003', '0.01','0.02','0.05','0.10','0.25',
-                      '0.50', '0.75','0.90','0.95','0.98','0.99','0.997', 
+                      '0.50', '0.75','0.90','0.95','0.98','0.99','0.997',
                       '0.999'])
-                      
+
     position=sp.special.erfinv(p*2-1)
-    
+
     pylab.yticks(position,label)
     pylab.grid()
-    
+
 def cdfplot(x,*arg,**kwarg):
     y=np.linspace(0,1,len(x))
     sx=np.sort(x)
     pylab.plot(sx,y,*arg,**kwarg)
 
-def reload():
-    BEEM=reload(BEEM)
-    IO=reload(BEEM.IO)
-    EXP=reload(BEEM.Experiment)
-    UI=reload(BEEM.UI)
-
-def main():
-    import os
-    from . import rc
-    os.system('ipython --pylab=qt -i ' +  rc.RCDIR + '/ipy.py')
-
 if __name__ == "__main__":
-    main()
+    pass

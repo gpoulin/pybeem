@@ -1,19 +1,19 @@
-# -*- coding: utf-8 -*-
 """
-Created on Sat Jan  5 01:25:35 2013
+File to update environment when working with ipython.
+Simply execute "run "enviro.py"
+"""
 
-@author: Guillaume Poulin
-"""
-import BEEM
-import BEEM.IO as IO
-import BEEM.Experiment as EXP
-import BEEM.UI as UI
 import glob
 import pickle
 from imp import reload
 
-BEEM=reload(BEEM)
-IO=reload(BEEM.IO)
-EXP=reload(BEEM.Experiment)
-UI=reload(BEEM.UI)
+import beem
+import beem.io as io
+import beem.experiment as exp
+import beem.ui as ui
+
+beem=reload(beem)
+io=reload(beem.io)
+exp=reload(beem.experiment)
+ui=reload(beem.ui)
  
