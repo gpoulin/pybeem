@@ -32,10 +32,10 @@ def cdfplot(x,*arg,**kwarg):
     pylab.plot(sx,y,*arg,**kwarg)
 
 def reload():
-    global BEEM=reload(BEEM)
-    global IO=reload(BEEM.IO)
-    global EXP=reload(BEEM.Experiment)
-    global UI=reload(BEEM.UI)
+    BEEM=reload(BEEM)
+    IO=reload(BEEM.IO)
+    EXP=reload(BEEM.Experiment)
+    UI=reload(BEEM.UI)
 
 def main():
     import os

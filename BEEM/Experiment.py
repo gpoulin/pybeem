@@ -9,7 +9,6 @@ import numpy as np
 import scipy.optimize as op
 import multiprocessing as mp
 import scipy.constants as constants
-from multiprocessing.pool import ThreadPool
 
 #Force error instead of warning
 import warnings
@@ -32,10 +31,10 @@ def use_pureC(val=True):
         bell_kaiser_v=_purePython.bell_kaiser_v
         residu_bell_kaiser_v=_purePython.residu_bell_kaiser_v
 
-import _purePython as _purePython
+from . import _purePython as _purePython
 
 try:
-  import _pureC as _pureC
+  from . import _pureC as _pureC
   use_pureC(True)
 except ImportError:
   use_pureC(False)
@@ -90,6 +89,8 @@ class BEESData(Experiment):
         self.parent=None
     
     def __cmp__(self,other):
+        if other==None:
+            return -1
         return self.id.__cmp__(other.id)
         
 
@@ -128,7 +129,7 @@ class BEESFit(object):
         self._bias_max=self.bias_max
         self._bias_min=self.bias_min
         if data!=None:
-          self._index=[True]*len(self.bias)
+            self._index=[True]*len(self.bias)
         
     def __cmp__(self,other):
         return self.id.__cmp__(other.id)
@@ -168,7 +169,7 @@ class BEESFit(object):
         
     @property
     def i_beem_estimated(self):
-        if self.barrier_height==None:
+        if self.barrier_height[0]==None:
             return None
         if self.method==BEEM_MODEL["bkv"]:
             return bell_kaiser_v(self.bias_fitted,self.n,
@@ -274,9 +275,6 @@ class BEESFit(object):
         else:
             self.data+=bees
 
-    def set_fitting(self,param):
-        self.update(param)
-    
     def _fit(self, barrier_height = [-0.8], trans_a = [0.001], noise = 1e-9):
 
         try:
@@ -331,35 +329,47 @@ class BEESFit(object):
               b=self._fit(a['barrier_height']*1.1,a['trans_a']*0.1, a['noise'])
 
             if b['barrier_height'][0]!=None and np.abs(b['barrier_height'][0]-a['barrier_height'][0])<tol:
-              break
+                return b
             
             #if barrier not found look further
-            if b['barrier_height'][0]==None or b['barrier_height'][0]>self.bias_max or b['barrier_height'][0]<self.bias_min or np.abs(b['barrier_height_err'][0]/b['barrier_height'][0])>0.2:
+            #if b['barrier_height'][0]==None or b['barrier_height'][0]>self.bias_max or b['barrier_height'][0]<self.bias_min or np.abs(b['barrier_height_err'][0]/b['barrier_height'][0])>0.1:
+            if b['barrier_height'][0]==None or np.abs(b['barrier_height_err'][0]/b['barrier_height'][0])>0.04:
                 if self.bias_max<0:
                     self.bias_min=max(self.bias_min-auto_range,lim)
                 else:
                     self.bias_max=min(self.bias_max+auto_range,lim)
             else:
-                if self.bias_max<0:
+                if b['barrier_height'][0]>self.bias_max or b['barrier_height'][0]<self.bias_min:
+                    b['barrier_height'][0]=(self.bias_max+self.bias_min)/2                
+                elif self.bias_max<0:
                     self.bias_min=conv_ratio*b['barrier_height'][0]+conv_inv*a['barrier_height'][0]-auto_range
                 else:
                     self.bias_max=conv_ratio*b['barrier_height'][0]+conv_inv*a['barrier_height'][0]+auto_range
                 a=b
         
-        if(np.abs(b['barrier_height_err'][0]/b['barrier_height'][0])>0.1):
+        if(b['barrier_height'][0]==None or np.abs(b['barrier_height_err'][0]/b['barrier_height'][0])>0.1):
             b={'barrier_height':[None],'trans_a':[None],'noise':None,
                 'barrier_height_err':[np.inf],'trans_a_err':[np.inf],'noise_err':np.inf}
 
         return b
   
-    def fit(self):
-        return self._auto_range_fit()
+    def fit(self,auto=None,**kwarg):
+        if auto==None and self.auto_range:
+            return self._auto_range_fit(auto_range=self.range,**kwarg)
+        elif auto==None:
+            return self._fit(**kwarg)
+        elif auto:
+            return self._auto_range_fit(auto_range=self.range,**kwarg)
+        else:
+            return self._fit(**kwarg)
+      
+    def fit_update(self,**kwarg):
+        self.update(self.fit(**kwarg))
 
-    def fit_update(self,*arg,**kwarg):
-        self.update(self.fit(*arg,**kwarg))
-        
     @property
     def r_squared(self):
+        if self.barrier_height[0]==None:
+            return np.nan
         return r_squared(self.i_beem_fitted,self.i_beem_estimated)
         
     
