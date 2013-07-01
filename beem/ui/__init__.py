@@ -11,10 +11,10 @@ sip.setapi('QTextStream', 2)
 sip.setapi('QTime', 2)
 sip.setapi('QUrl', 2)
 from PyQt4 import QtGui, QtCore
- 
+
 import pyqtgraph as pg
 import numpy as np
-from .io import grid_from_3ds
+from ..io import grid_from_3ds
 import os
 import json
 import matplotlib.pyplot as mpl
@@ -83,7 +83,7 @@ class BEESFitGraph(pg.PlotWidget):
 class BEESSelector(QtGui.QDialog):
     def __init__(self,bees_list,parent=None):
         super().__init__(parent)
-        self.beesList=bees_list
+        self.bees_list=bees_list
         self.index=0
         self.selected=[True]*len(bees_list)
         self.fitter=BEESFitGraph()
@@ -107,9 +107,9 @@ class BEESSelector(QtGui.QDialog):
         self.setLayout(vbox)
         self.ne.clicked.connect(self.go_next)
         self.pr.clicked.connect(self.go_prev)
-        self,check.stateChanged.connect(self.on_change)
+        self.check.stateChanged.connect(self.on_change)
         self._update()
-    
+
     def on_change(self,a):
         if a>0:
             self.selected[self.index]=True
@@ -122,7 +122,7 @@ class BEESSelector(QtGui.QDialog):
         self.ne.setText("Next")
         if self.index==0:
             self.pr.setEnabled(False)
-        elif self.index==len(self.beesList)-1:
+        elif self.index==len(self.bees_list)-1:
             self.ne.setText("Finish")
         if self.selected[self.index]:
             self.check.setChecked(True)
@@ -136,7 +136,7 @@ class BEESSelector(QtGui.QDialog):
         else:
             self.index+=1
         self._update()
-    
+
     def go_prev(self):
         self.index-=1
         self._update()
@@ -149,7 +149,7 @@ def select_bees(bees_list):
     return bees_list[np.array(a.selected)]
 
 def select_file(folder = None, filter = None, selected_filter = None):
-    filename = QtGui.QFileDialog.getOpenFileName(directory = folder, 
+    filename = QtGui.QFileDialog.getOpenFileName(directory = folder,
                         filter = filter, selectedFilter = selected_filter)
     return filename
 
@@ -157,7 +157,7 @@ def open3ds(filename = None, folder = None):
     if filename == None:
         filename = select_file(folder=folder, filter=u'3ds (*.3ds)')
     return grid_from_3ds(filename)
-    
+
 def find_config():
     if os.name == 'posix':
         folder = os.path.expanduser('~/.pybeem')
@@ -165,7 +165,7 @@ def find_config():
         folder = os.path.expandvars('%APPDATA%/pybeem')
     else:
         raise Exception("Don't know where to save config. OS unknown")
-    
+
     if not os.path.exists(folder):
         os.makedirs(folder)
     return folder + '/pybeem.conf'
@@ -193,19 +193,19 @@ def fit_file(filename = None, folder = None):
     g.normal_fit()
     g.fit(-1)
     return g
-    
+
 def dualplot(bees,**kwds):
-    bh=np.abs([x.barrier_height for x in bees])
-    r=[x.trans_r for x in bees]
+    bh=np.abs([x.barrier_height[0] for x in bees])
+    r=[x.trans_r[0] for x in bees]
     h=mpl.hist2d(bh,r,**kwds)
     c=mpl.colorbar()
     mpl.xlabel('$\phi$ (eV)')
     mpl.ylabel('R (eV$^{-1}$)')
     return h,c
-    
+
 def contourDual(bees,N=None,bins=None,range=None,**kwds):
-    bh=np.abs([x.barrier_height for x in bees])
-    r=[x.trans_r for x in bees]
+    bh=np.abs([x.barrier_height[0] for x in bees])
+    r=[x.trans_r[0] for x in bees]
     H,X,Y=np.histogram2d(r,bh,bins=bins,range=[range[1],range[0]])
     extent = [Y[0], Y[-1], X[0], X[-1]]
     if N==None:
@@ -217,8 +217,8 @@ def contourDual(bees,N=None,bins=None,range=None,**kwds):
     mpl.xlabel('$\phi$ (eV)')
     mpl.ylabel('R (eV$^{-1}$)')
     return (CS1,c)
-    
-    
+
+
 if __name__ == "__main__":
     load_pref()
     print(_pref)

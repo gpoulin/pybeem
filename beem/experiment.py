@@ -298,15 +298,23 @@ class BEESFit(object):
                 pcov = np.inf
                 err=[np.inf]*(1+2*b)
 
-            return {'barrier_height':popt[1:b+1], 'trans_a':popt[b+1:2*b+1],'noise': popt[0],
-                'barrier_height_err':np.sqrt(err[1:b+1]),'trans_a_err':np.sqrt(err[b+1:2*b+1]),
-                'noise_err':np.sqrt(err[0])}
+            return {'barrier_height':popt[1:b+1],
+                    'trans_a':popt[b+1:2*b+1],
+                    'noise': popt[0],
+                    'barrier_height_err':np.sqrt(err[1:b+1]),
+                    'trans_a_err':np.sqrt(err[b+1:2*b+1]),
+                    'noise_err':np.sqrt(err[0])}
         except:
-            return {'barrier_height':[None],'trans_a':[None],'noise':None,
-                'barrier_height_err':[np.inf],'trans_a_err':[np.inf],'noise_err':np.inf}
+            return {'barrier_height':[None],
+                    'trans_a':[None],
+                    'noise':None,
+                    'barrier_height_err':[np.inf],
+                    'trans_a_err':[np.inf],
+                    'noise_err':np.inf}
 
     def _auto_range_fit(self, barrier_height = [-0.8], trans_a = [0.001],
-                       noise = 1e-9, auto_range = 0.4, tol = 0.001, maxIt=10, conv_ratio=1):
+                       noise = 1e-9, auto_range = 0.4, tol = 0.001,
+                       maxIt=10, conv_ratio=1):
 
         conv_inv=1-conv_ratio
 
@@ -328,28 +336,40 @@ class BEESFit(object):
             if b['barrier_height']==a['barrier_height']:
               b=self._fit(a['barrier_height']*1.1,a['trans_a']*0.1, a['noise'])
 
-            if b['barrier_height'][0]!=None and np.abs(b['barrier_height'][0]-a['barrier_height'][0])<tol:
+            if b['barrier_height'][0]!=None and\
+                    np.abs(b['barrier_height'][0]-a['barrier_height'][0])<tol:
                 b.update({'bias_max':self.bias_max,'bias_min':self.bias_min})
                 return b
 
             #if barrier not found look further
-            if b['barrier_height'][0]==None or np.abs(b['barrier_height_err'][0]/b['barrier_height'][0])>0.04:
+            if b['barrier_height'][0]==None or\
+                    np.abs(b['barrier_height_err'][0]/b['barrier_height'][0])\
+                    >0.04:
                 if self.bias_max<0:
                     self.bias_min=max(self.bias_min-auto_range,lim)
                 else:
                     self.bias_max=min(self.bias_max+auto_range,lim)
             else:
-                if b['barrier_height'][0]>self.bias_max or b['barrier_height'][0]<self.bias_min:
+                if b['barrier_height'][0]>self.bias_max or\
+                        b['barrier_height'][0]<self.bias_min:
                     b['barrier_height'][0]=(self.bias_max+self.bias_min)/2
                 elif self.bias_max<0:
-                    self.bias_min=conv_ratio*b['barrier_height'][0]+conv_inv*a['barrier_height'][0]-auto_range
+                    self.bias_min=conv_ratio*b['barrier_height'][0]+\
+                            conv_inv*a['barrier_height'][0]-auto_range
                 else:
-                    self.bias_max=conv_ratio*b['barrier_height'][0]+conv_inv*a['barrier_height'][0]+auto_range
+                    self.bias_max=conv_ratio*b['barrier_height'][0]+\
+                            conv_inv*a['barrier_height'][0]+auto_range
                 a=b
 
-        if(b['barrier_height'][0]==None or np.abs(b['barrier_height_err'][0]/b['barrier_height'][0])>0.1):
-            b={'barrier_height':[None],'trans_a':[None],'noise':None,
-                'barrier_height_err':[np.inf],'trans_a_err':[np.inf],'noise_err':np.inf}
+        if(b['barrier_height'][0]==None or\
+                np.abs(b['barrier_height_err'][0]/b['barrier_height'][0])>0.1):
+
+            b={'barrier_height':[None],
+               'trans_a':[None],
+               'noise':None,
+               'barrier_height_err':[np.inf],
+               'trans_a_err':[np.inf],
+               'noise_err':np.inf}
 
         b.update({'bias_max':self.bias_max,'bias_min':self.bias_min})
         return b
@@ -377,13 +397,10 @@ class BEESFit(object):
 from scipy.linalg.lapack import get_lapack_funcs
 from scipy.linalg import calc_lwork
 from numpy.linalg import LinAlgError
-getrf = None
-getri = None
+getrf, getri = get_lapack_funcs(('getrf','getri'), (np.eye(3),))
 
 def inv(a):
     global getrf, getri
-    if getrf==None:
-        getrf, getri = get_lapack_funcs(('getrf','getri'), (a,))
     lu, piv, info = getrf(a, overwrite_a=True)
     if info == 0:
         lwork = calc_lwork.getri(getri.typecode, a.shape[0])
@@ -471,8 +488,10 @@ class Grid(Experiment):
         print(t2-t1)
 
     def set_coord(self):
-        self.xs = np.unique(filter(lambda x: not(x==None),[b.pos_x for b in self.bees]))
-        self.ys = np.unique(filter(lambda x: not(x==None),[b.pos_y for b in self.bees]))
+        self.xs = np.unique(filter(lambda x: not(x==None),
+                            [b.pos_x for b in self.bees]))
+        self.ys = np.unique(filter(lambda x: not(x==None),
+                            [b.pos_y for b in self.bees]))
 
     def set_indexes(self):
         x_len=np.array(range(len(self.xs)))
@@ -546,7 +565,8 @@ class IV(Experiment):
         self.r_squared=0
         self.Vmax=0
         self.Vmin=0
-        self.KbT=constants.physical_constants['Boltzmann constant in eV/K'][0]*self.T
+        self.KbT=constants.physical_constants['Boltzmann constant in eV/K'][0]\
+                *self.T
         self.Is=self.A*self.W*self.T**2
 
     @property
@@ -570,10 +590,12 @@ class IV(Experiment):
         return np.log(np.abs(IV.schottky_richardson(V,Vbh,n,self.Is,self.KbT)))
 
     def fit(self,Vbh_init=0.8,n_init=1.0):
-        popt,pconv=op.curve_fit(self._model_fit,self.V_fitted,np.log(np.abs(self.I_fitted)),[Vbh_init,n_init])
+        popt,pconv=op.curve_fit(self._model_fit,self.V_fitted,
+                np.log(np.abs(self.I_fitted)),[Vbh_init,n_init])
         self.barrier_height=popt[0]
         self.n=popt[1]
-        self.r_squared=r_squared(np.log(np.abs(self.I_fitted)),self._model_fit(self.V_fitted,popt[0],popt[1]))
+        self.r_squared=r_squared(np.log(np.abs(self.I_fitted)),
+                self._model_fit(self.V_fitted,popt[0],popt[1]))
 
 
 def r_squared(y_sampled, y_estimated):
@@ -625,7 +647,8 @@ class BEESID(object):
         self.mode=MODE['fwd']
 
     def __hash__(self):
-        return int(self.mode+10*self.number+1000*self.pass_number+100000*self.y_index+100000000*self.x_index)
+        return int(self.mode+10*self.number+1000*self.pass_number+\
+                   100000*self.y_index+100000000*self.x_index)
 
     def __cmp__(self,other):
         l=['x_index','y_index','pass_number','number','mode']
@@ -667,7 +690,8 @@ class BEESID(object):
 
 
     def __str__(self):
-        return '%03d_%03d_%03d_%03d_%02d'%(self.x_index,self.y_index,self.pass_number,self.number,self.mode)
+        return '%03d_%03d_%03d_%03d_%02d'%(self.x_index,self.y_index,
+                self.pass_number,self.number,self.mode)
 
 
 

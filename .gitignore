@@ -2,3 +2,6 @@ __pycache__
 build
 *.pyc
 *.so
+*.out
+beem/ui/*.py
+!beem/ui/__init__.py

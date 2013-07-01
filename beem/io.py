@@ -7,6 +7,8 @@ Created on Fri Dec  7 18:43:57 2012
 import numpy as np
 import datetime
 from beem import experiment
+import gzip
+import pickle
 
 
 def file2data(filename, lastHeader="[DATA]"):
@@ -141,6 +143,7 @@ def grid_from_3ds(filename):
             grid.size_y=value[3]
 
         elif param=='Fixed parameters':
+
             value=[ x.strip() for x in value.strip('"').split(';')]
             for channel in value:
                 param_list.append(channel)
@@ -223,9 +226,17 @@ def ivs_from_file(filenames,dic={}):
         list+=iv_from_file(filename,dic)
     return list
 
+def save_space(filenames,bees=None,groups=None,grids=None,ivs=None,comp=True):
+    if comp:
+        f=gzip.open(filenames,'wb')
+    else:
+        f=open(filenames,'wb')
+    pickle.dump({'bees':bees,'groups':groups,'grids':grids,'ivs':ivs},f,protocol=3)
+
+
 if __name__ == "__main__":
     g=grid_from_3ds('/run/media/guillaume/D4D0-B7A7/2013-04-22/Grid Spectroscopy_Au-sp5-w5_C2_001.3ds')
     g.init_grid()
     g.normal_fit()
     experiment.use_pure_c(True)
-    g.fit(2)
+    g.fit(1)
