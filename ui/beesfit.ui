@@ -39,7 +39,7 @@
        </property>
        <layout class="QVBoxLayout" name="verticalLayout">
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout">
+         <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,4">
           <item>
            <widget class="QLabel" name="label">
             <property name="text">
@@ -48,39 +48,19 @@
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="bh">
-            <property name="lineWidth">
-             <number>1</number>
+           <widget class="ValueLabel" name="val_vbh">
+            <property name="toolTip">
+             <string>pyqtgraph ValueLabel</string>
             </property>
-            <property name="text">
-             <string>0.00</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="label_3">
-            <property name="enabled">
-             <bool>true</bool>
-            </property>
-            <property name="text">
-             <string>±</string>
-            </property>
-            <property name="alignment">
-             <set>Qt::AlignCenter</set>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="bh_err">
-            <property name="text">
-             <string>0.00</string>
+            <property name="whatsThis">
+             <string> QLabel specifically for displaying numerical values</string>
             </property>
            </widget>
           </item>
          </layout>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_2">
+         <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="1,4">
           <item>
            <widget class="QLabel" name="label_5">
             <property name="text">
@@ -89,39 +69,19 @@
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="ta">
-            <property name="lineWidth">
-             <number>1</number>
+           <widget class="ValueLabel" name="val_ta">
+            <property name="toolTip">
+             <string>pyqtgraph ValueLabel</string>
             </property>
-            <property name="text">
-             <string>0.00</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="label_7">
-            <property name="enabled">
-             <bool>true</bool>
-            </property>
-            <property name="text">
-             <string>±</string>
-            </property>
-            <property name="alignment">
-             <set>Qt::AlignCenter</set>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="ta_err">
-            <property name="text">
-             <string>0.00</string>
+            <property name="whatsThis">
+             <string> QLabel specifically for displaying numerical values</string>
             </property>
            </widget>
           </item>
          </layout>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="1,4">
           <item>
            <widget class="QLabel" name="label_9">
             <property name="text">
@@ -130,39 +90,19 @@
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="tr">
-            <property name="lineWidth">
-             <number>1</number>
+           <widget class="ValueLabel" name="val_tr">
+            <property name="toolTip">
+             <string>pyqtgraph ValueLabel</string>
             </property>
-            <property name="text">
-             <string>0.00</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="label_11">
-            <property name="enabled">
-             <bool>true</bool>
-            </property>
-            <property name="text">
-             <string>±</string>
-            </property>
-            <property name="alignment">
-             <set>Qt::AlignCenter</set>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="tr_err">
-            <property name="text">
-             <string>0.00</string>
+            <property name="whatsThis">
+             <string> QLabel specifically for displaying numerical values</string>
             </property>
            </widget>
           </item>
          </layout>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_4">
+         <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,4">
           <item>
            <widget class="QLabel" name="label_13">
             <property name="text">
@@ -171,32 +111,33 @@
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="off">
-            <property name="lineWidth">
-             <number>1</number>
+           <widget class="ValueLabel" name="val_off">
+            <property name="toolTip">
+             <string>pyqtgraph ValueLabel</string>
             </property>
+            <property name="whatsThis">
+             <string> QLabel specifically for displaying numerical values</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_6" stretch="1,4">
+          <item>
+           <widget class="QLabel" name="label_2">
             <property name="text">
-             <string>0.00</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;R&lt;span style=&quot; vertical-align:super;&quot;&gt;2&lt;/span&gt;:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="label_15">
-            <property name="enabled">
-             <bool>true</bool>
+           <widget class="ValueLabel" name="val_r2">
+            <property name="toolTip">
+             <string>pyqtgraph ValueLabel</string>
             </property>
-            <property name="text">
-             <string>±</string>
-            </property>
-            <property name="alignment">
-             <set>Qt::AlignCenter</set>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="off_err">
-            <property name="text">
-             <string>0.00</string>
+            <property name="whatsThis">
+             <string> QLabel specifically for displaying numerical values</string>
             </property>
            </widget>
           </item>
@@ -227,6 +168,11 @@
    <slots>
     <signal>fds()</signal>
    </slots>
+  </customwidget>
+  <customwidget>
+   <class>ValueLabel</class>
+   <extends>QLabel</extends>
+   <header>pyqtgraph</header>
   </customwidget>
  </customwidgets>
  <resources/>

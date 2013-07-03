@@ -226,12 +226,24 @@ def ivs_from_file(filenames,dic={}):
         list+=iv_from_file(filename,dic)
     return list
 
-def save_space(filenames,bees=None,groups=None,grids=None,ivs=None,comp=True):
+def save_space(filenames,space,comp=True):
     if comp:
         f=gzip.open(filenames,'wb')
     else:
         f=open(filenames,'wb')
-    pickle.dump({'bees':bees,'groups':groups,'grids':grids,'ivs':ivs},f,protocol=3)
+    pickle.dump(space,f,protocol=3)
+    f.close()
+
+def load_space(filenames):
+    try:
+        f=gzip.open(filenames,'rb')
+        a=pickle.load(f)
+    except IOError:
+        f.close()
+        f=open(filenames,'rb')
+        a=pickle.load(f)
+    f.close()
+    return a
 
 
 if __name__ == "__main__":

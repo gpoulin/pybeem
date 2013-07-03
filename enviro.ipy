@@ -7,7 +7,6 @@ Simply execute "run "enviro.py"
 %autoreload 2
 
 import glob
-
 import beem
 import beem.io as io
 import beem.experiment as exp

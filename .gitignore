@@ -5,3 +5,6 @@ build
 *.out
 beem/ui/*.py
 !beem/ui/__init__.py
+dist
+MANIFEST
+*.egg-info

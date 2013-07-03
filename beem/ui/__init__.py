@@ -17,7 +17,7 @@ import numpy as np
 from ..io import grid_from_3ds
 import os
 import json
-import matplotlib.pyplot as mpl
+from beem.ui.graph import *
 
 signal = QtCore.pyqtSignal
 slot = QtCore.pyqtSlot
@@ -194,29 +194,10 @@ def fit_file(filename = None, folder = None):
     g.fit(-1)
     return g
 
-def dualplot(bees,**kwds):
-    bh=np.abs([x.barrier_height[0] for x in bees])
-    r=[x.trans_r[0] for x in bees]
-    h=mpl.hist2d(bh,r,**kwds)
-    c=mpl.colorbar()
-    mpl.xlabel('$\phi$ (eV)')
-    mpl.ylabel('R (eV$^{-1}$)')
-    return h,c
 
-def contourDual(bees,N=None,bins=None,range=None,**kwds):
-    bh=np.abs([x.barrier_height[0] for x in bees])
-    r=[x.trans_r[0] for x in bees]
-    H,X,Y=np.histogram2d(r,bh,bins=bins,range=[range[1],range[0]])
-    extent = [Y[0], Y[-1], X[0], X[-1]]
-    if N==None:
-        N=int(H.max())-1
-    CS1=mpl.contourf(H,N,extent=extent,extend='min',**kwds)
-    c=mpl.colorbar()
-    CS2=mpl.contour(H,levels=CS1.levels,extent=extent,extend='min',colors='k')
-    c.add_lines(CS2)
-    mpl.xlabel('$\phi$ (eV)')
-    mpl.ylabel('R (eV$^{-1}$)')
-    return (CS1,c)
+
+def main(arg):
+    pass
 
 
 if __name__ == "__main__":
