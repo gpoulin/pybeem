@@ -9,7 +9,7 @@ import os
 import glob
 
 extC = Extension(
-                "beem._pure_c", ["beem/pure_c.c"],
+                "beem.experiment._pure_c", ["beem/experiment/pure_c.c"],
                 include_dirs=numpy.distutils.misc_util.get_numpy_include_dirs()
                 )
 
