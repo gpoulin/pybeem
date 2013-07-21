@@ -247,8 +247,4 @@ def load_space(filenames):
 
 
 if __name__ == "__main__":
-    g=grid_from_3ds('/run/media/guillaume/D4D0-B7A7/2013-04-22/Grid Spectroscopy_Au-sp5-w5_C2_001.3ds')
-    g.init_grid()
-    g.normal_fit()
-    experiment.use_pure_c(True)
-    g.fit(1)
+    pass

@@ -3,6 +3,7 @@ import scipy.optimize as op
 
 from . import BEEM_MODEL, MODE
 from .optimize import leastsq
+from . import r_squared
 
 #Force error instead of warning
 import warnings

@@ -3,6 +3,7 @@ import scipy.optimize as op
 import scipy.constants as constants
 
 from .experiment import Experiment
+from . import r_squared
 
 class IV(Experiment):
 
