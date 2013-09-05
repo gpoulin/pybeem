@@ -1,4 +1,5 @@
 import numpy as np
+import warnings
 class Experiment(object):
     """Class to store general data about an experiment
 
@@ -39,7 +40,8 @@ def use_pure_c(val=True):
             return
         except:
             pass
-
+    
+    warnings.warn('Python code used instead of C code: slower')
     from . import _pure_python as _pure_python
     bell_kaiser_v = _pure_python.bell_kaiser_v
     residu_bell_kaiser_v = _pure_python.residu_bell_kaiser_v
