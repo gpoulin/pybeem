@@ -8,3 +8,4 @@ beem/ui/*.py
 dist
 MANIFEST
 *.egg-info
+*swp

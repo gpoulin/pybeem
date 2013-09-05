@@ -1,4 +1,4 @@
-from .experiment import Experiment
+from .experiment import Experiment, MODE
 
 class BEESData(Experiment):
 

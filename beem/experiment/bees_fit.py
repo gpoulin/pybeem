@@ -1,9 +1,9 @@
 import numpy as np
 import scipy.optimize as op
 
-from . import BEEM_MODEL, MODE
+from .experiment import BEEM_MODEL, MODE
 from .optimize import leastsq
-from . import r_squared
+from .experiment import r_squared
 
 #Force error instead of warning
 import warnings

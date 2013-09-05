@@ -22,3 +22,22 @@ class Experiment(object):
         self.device = device
         self.date = date
         self.src_file = src_file
+
+MODE = {'fwd':0, 'bwd':1} #Enum to store if in the foward or backward mode
+BEEM_MODEL = {'bkv':0,'bk':1}
+
+def r_squared(y_sampled, y_estimated):
+    """Give the correlation coefficient between sampled data eand estimate data
+
+    Args:
+        y_sampled (ndarray): data sampled
+        y_estimated (ndarray): data estimated by fitting
+
+    Returns:
+        float. squared correlation coefficient
+    """
+    if y_estimated==None:
+        return np.NAN
+    sse = sum( (y_sampled - y_estimated)**2 )
+    sst = sum( (y_sampled - np.mean(y_sampled) )**2 )
+    return 1 - sse / sst

@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import os
 
 def test_fit():
-    a=BEESFromFile('/home/guillaume/Dropbox/nus/master/BEEM/2012-12-26/BEEM_HfO-3_D3_001.dat')
+    a=BEESFromFile('/disk/Dropbox/nus/master/BEEM/2012-12-26/BEEM_HfO-3_D3_001.dat')
     #a=BEESFromFile('/home/guillaume/key/BEEM_Co-3h_A3_025.dat')
     #folder='/home/guillaume/key/Au-W/'
     #for filename in os.listdir(folder):

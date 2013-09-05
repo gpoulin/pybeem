@@ -26,7 +26,6 @@ def _file2data(filename, lastHeader="[DATA]"):
 
         line = fid.readline().decode('utf_8')
 
-    fid.
     line=fid.readline().decode('utf_8')
     header_list=line.rstrip().split('\t')
     name=dict(zip(header_list, range(len(header_list))))
@@ -84,7 +83,7 @@ def grid_from_files(filenames, dic=None):
             b = bees_from_file(f)
         else:
             b = bees_from_file(f, dic)
-        g.bees + =b
+        g.bees += b
     return g
 
 

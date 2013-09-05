@@ -3,6 +3,7 @@ verifications.
 """
 
 import scipy.optimize as op
+import numpy as np
 from scipy.linalg.lapack import get_lapack_funcs
 from scipy.linalg import calc_lwork
 from numpy.linalg import LinAlgError

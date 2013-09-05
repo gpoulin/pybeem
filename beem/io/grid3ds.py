@@ -1,7 +1,13 @@
 import numpy as np
 import datetime
 from beem.experiment import Grid, BEESData
-from . import CHANNEL_NAME
+
+CHANNEL_NAME={
+        'beem':'BEEM Current',
+        'tunnel':'Current',
+        'bias':'Bias',
+        'z':'Z'
+        }
 
 def grid_from_3ds(filename, chanel_name):
     """Create a grid object from one or many 3ds files
@@ -117,4 +123,3 @@ def _grid_from_3ds(filename, chanel_name):
 
 
     return grid
-
