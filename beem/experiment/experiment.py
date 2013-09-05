@@ -1,3 +1,4 @@
+import numpy as np
 class Experiment(object):
     """Class to store general data about an experiment
 
@@ -23,6 +24,34 @@ class Experiment(object):
         self.date = date
         self.src_file = src_file
 
+
+_use_pure_c=True
+bell_kaiser_v=None
+residu_bell_kaiser_v=None
+
+def use_pure_c(val=True):
+    global bell_kaiser_v,residu_bell_kaiser_v,_use_pure_c
+    if val==True:
+        try:
+            bell_kaiser_v=_pure_c.bell_kaiser_v
+            residu_bell_kaiser_v=_pure_c.residu_bell_kaiser_v
+            _use_pure_c = True
+            return
+        except:
+            pass
+
+    from . import _pure_python as _pure_python
+    bell_kaiser_v = _pure_python.bell_kaiser_v
+    residu_bell_kaiser_v = _pure_python.residu_bell_kaiser_v
+    _use_pure_c = False
+
+
+try:
+  from . import _pure_c as _pure_c
+  use_pure_c(True)
+except ImportError:
+  use_pure_c(False)
+  
 MODE = {'fwd':0, 'bwd':1} #Enum to store if in the foward or backward mode
 BEEM_MODEL = {'bkv':0,'bk':1}
 

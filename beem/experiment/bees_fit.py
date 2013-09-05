@@ -1,7 +1,8 @@
 import numpy as np
 import scipy.optimize as op
 
-from .experiment import BEEM_MODEL, MODE
+from .experiment import BEEM_MODEL, MODE, bell_kaiser_v, residu_bell_kaiser_v
+from beem.experiment.bees_data import BEESData
 from .optimize import leastsq
 from .experiment import r_squared
 
@@ -181,7 +182,7 @@ class BEESFit(object):
         if isinstance(data,BEESData):
             self.data.append(data)
         else:
-            self.data+=bees
+            self.data+=data
 
     def _fit(self, barrier_height = [-0.8], trans_a = [0.001], noise = 1e-9):
 

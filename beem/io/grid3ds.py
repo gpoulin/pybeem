@@ -1,6 +1,7 @@
 import numpy as np
 import datetime
 from beem.experiment import Grid, BEESData
+from beem.experiment.experiment import MODE
 
 CHANNEL_NAME={
         'beem':'BEEM Current',
@@ -9,7 +10,7 @@ CHANNEL_NAME={
         'z':'Z'
         }
 
-def grid_from_3ds(filename, chanel_name):
+def grid_from_3ds(filename, channel_name={}):
     """Create a grid object from one or many 3ds files
     """
     if not isinstance(filename, list):
@@ -17,17 +18,18 @@ def grid_from_3ds(filename, chanel_name):
 
     grid = Grid()
     for x in filename:
-        grid += _grid_from_3ds(x, chanel_name)
+        grid += _grid_from_3ds(x, channel_name)
 
     return grid
 
-def _grid_from_3ds(filename, chanel_name):
+def _grid_from_3ds(filename, channel={}):
     fid = open(filename, 'rb')
     grid = Grid()
     line = fid.readline().decode('utf_8').strip()
     grid.src_file = filename
     param_list = []
-    chanel_name = CHANNEL_NAME.copy().update(chanel_name)
+    channel_name = CHANNEL_NAME.copy()
+    channel_name.update(channel)
 
     while line!=':HEADER_END:':
         splited = line.split('=')
@@ -112,14 +114,14 @@ def _grid_from_3ds(filename, chanel_name):
             i_beem = data[delta+param_num+channel_dict['BEEM Current (A)']*points:param_num+channel_dict['BEEM Current (A)']*points+points+delta:],
             i_tunnel = data[delta+param_num+channel_dict['Current (A)']*points:param_num+channel_dict['Current (A)']*points+points+delta:],
             pos_z = data[delta+param_num+channel_dict['Z (m)']*points:param_num+channel_dict['Z (m)']*points+points+delta:],
-            mode=experiment.MODE['fwd'],**dico))
+            mode=MODE['fwd'],**dico))
 
             grid.bees.append(BEESData(
             bias = data[delta+param_num+channel_dict['Bias [bwd] (V)']*points:param_num+channel_dict['Bias [bwd] (V)']*points+points+delta:],
             i_beem = data[delta+param_num+channel_dict['BEEM Current [bwd] (A)']*points:param_num+channel_dict['BEEM Current [bwd] (A)']*points+points+delta:],
             i_tunnel = data[delta+param_num+channel_dict['Current [bwd] (A)']*points:param_num+channel_dict['Current [bwd] (A)']*points+points+delta:],
             pos_z = data[delta+param_num+channel_dict['Z [bwd] (m)']*points:param_num+channel_dict['Z [bwd] (m)']*points+points+delta:],
-            mode=experiment.MODE['bwd'],**dico))
+            mode=MODE['bwd'],**dico))
 
 
     return grid

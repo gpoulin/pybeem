@@ -48,13 +48,14 @@ class BEESID(object):
         return int(self.mode + 10*self.number + 1000*self.pass_number +\
                    100000*self.y_index + 100000000*self.x_index)
 
-    def __cmp__(self,other):
+    def __eq__(self,other):
         l=['x_index', 'y_index', 'pass_number', 'number', 'mode']
         for x in l:
-            a=int.__cmp__(self.__getattribute__(x),other.__getattribute__(x))
-            if not(a==0):
-                return a
-        return 0
+            if self.__getattribute__(x)!=other.__getattribute__(x):
+                return False
+        return True
+
+
 
     def copy(self):
         k = BEESID()

@@ -5,6 +5,7 @@ Simply execute "run "enviro.py"
 
 %load_ext autoreload
 %autoreload 2
+%pylab qt
 
 import glob
 import beem
