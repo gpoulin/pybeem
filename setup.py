@@ -46,7 +46,7 @@ setup(name = 'pyBEEM',
       ext_modules = [extC],
       license = 'GPLv3',
       packages = ['beem','beem.ui'],
-      cmdclass = {'build_py': my_build, 'clean': my_clean, 'buildl': my_sdist},
+      cmdclass = {'build_py': my_build, 'clean': my_clean},
       classifiers=[
           'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
           'Operating System :: Microsoft :: Windows',
