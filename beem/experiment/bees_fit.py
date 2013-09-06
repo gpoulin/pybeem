@@ -40,8 +40,8 @@ class BEESFit(object):
         if data!=None:
             self._index = [True]*len(self.bias)
 
-    def __cmp__(self,other):
-        return self.id.__cmp__(other.id)
+    def __eq__(self,other):
+        return self.id==other.id
 
     def update(self,dic):
         for key in dic:
@@ -343,19 +343,19 @@ class BEESFitID(object):
         return int(h*100+10*self.n)
 
 
-    def __cmp__(self,other):
-        a=int.__cmp__(len(self.bees),len(other.bees))
-        if not(a==0):
-            return a
+    def __eq__(self,other):
+        if len(self.bees)!=len(other.bees):
+            return False
         self.bees.sort()
         other.bees.sort()
 
         for x in range(len(self.bees)):
-            a=self.bees[x].__cmp__(other.bees[x])
-            if not(a==0):
-                return a
+            if self.bees[x]!=other.bees[x]:
+                return False
+        return self.n==other.n
 
-        return int(np.sign(self.n-other.n))
+    def __ne__(self,other):
+        return not(self==other)
 
     def __str__(self):
         s=''

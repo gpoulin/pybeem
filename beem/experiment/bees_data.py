@@ -18,14 +18,26 @@ class BEESData(Experiment):
         self.id = None
         self.parent = None
 
-    def __cmp__(self,other):
+    def __eq__(self,other):
         if other is None:
             return -1
         if self.id is None:
             self.set_id()
         elif other.id is None:
             other.set_id()
-        return self.id.__cmp__(other.id)
+        return self.id==other.id
+
+    def __ne__(self,other):
+        return not(self==other)
+    
+    def __lt__(self,other):
+        if other is None:
+            return -1
+        if self.id is None:
+            self.set_id()
+        elif other.id is None:
+            other.set_id()
+        return self.id<other.id
 
     def set_id(self):
         self.id = BEESID()
@@ -55,6 +67,15 @@ class BEESID(object):
                 return False
         return True
 
+    def __ne__(self,other):
+        return not(self==other)
+
+    def __lt__(self,other):
+        l=['x_index', 'y_index', 'pass_number', 'number', 'mode']
+        for x in l:
+            if self.__getattribute__(x)<other.__getattribute__(x):
+                return True
+        return False
 
 
     def copy(self):
