@@ -1,12 +1,5 @@
-"""
-Created on Sat Jan  5 00:44:47 2013
-
-@author: Guillaume Poulin
-"""
-
-import numpy as np
-
 from .iv import IV
 from .grid import Grid
+from .experiment import MODE, bell_kaiser_v, r_squared, residu_bell_kaiser_v, use_pure_c
 from .bees_data import BEESData
 from .bees_fit import BEESFit
