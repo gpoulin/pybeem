@@ -39,23 +39,12 @@ class Grid(Experiment):
             b.n=n
 
 
-    def fit(self,threads=1):
+    def fit(self):
         from time import time
-        t1=time()
-        if threads==1:
-            for x in self.beesfit:
-                x.fit_update()
-        else:
-            if threads==-1:
-                p=mp.Pool()
-            else:
-                p=mp.Pool(threads)
-            beesfit=p.map(fit_para,self.beesfit)
-            p.close()
-            for i in range(len(beesfit)):
-                self.beesfit[i].update(beesfit[i])
-        t2=time()
-        print(t2-t1)
+        t=time()
+        for x in self.beesfit:
+            x.fit_update()
+        print(time()-t)
 
     def set_coord(self):
         self.xs = np.unique(filter(lambda x: not(x==None),
@@ -115,6 +104,3 @@ class Grid(Experiment):
         fit=np.array(self.beesfit)
         r=np.array([x.r_squared for x in fit])
         return fit[np.logical_and(r>r_squared,r<1)]
-
-def fit_para(x):
-    return x.fit()
