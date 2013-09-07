@@ -3,8 +3,7 @@ build
 *.pyc
 *.so
 *.out
-beem/ui/*.py
-!beem/ui/__init__.py
+beem/ui/*_ui.py
 dist
 MANIFEST
 *.egg-info
