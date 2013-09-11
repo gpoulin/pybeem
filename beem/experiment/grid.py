@@ -2,6 +2,7 @@ import multiprocessing as mp
 import numpy as np
 from .experiment import Experiment
 from .bees_fit import BEESFit
+from copy import copy
 
 class Grid(Experiment):
 
@@ -22,9 +23,10 @@ class Grid(Experiment):
         self.beesfit_dict=dict()
 
     def __add__(self,other):
-        ret=Grid()
-        ret.bees=self.bees+other.bees
-        ret.beesfit=self.beesfit+other.beesfit
+        ret=copy(self)
+        ret.bees+=other.bees
+        ret.beesfit+=other.beesfit
+        
         return ret
 
     def normal_fit(self):

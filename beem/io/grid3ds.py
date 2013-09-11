@@ -10,23 +10,11 @@ CHANNEL_NAME={
         'z':'Z'
         }
 
-def grid_from_3ds(filename, channel_name={}):
-    """Create a grid object from one or many 3ds files
-    """
-    if not isinstance(filename, list):
-        filename = [filename]
-
-    grid = Grid()
-    for x in filename:
-        grid += _grid_from_3ds(x, channel_name)
-
-    return grid
-
-def _grid_from_3ds(filename, channel={}):
+def grid_from_3ds(filename, channel={}):
     fid = open(filename, 'rb')
     grid = Grid()
     line = fid.readline().decode('utf_8').strip()
-    grid.src_file = filename
+    grid.src_files = [filename]
     param_list = []
     channel_name = CHANNEL_NAME.copy()
     channel_name.update(channel)
@@ -105,7 +93,7 @@ def _grid_from_3ds(filename, channel={}):
         dico = {'pos_x':pos_x,
                 'pos_y':pos_y,
                 'date':grid.date,
-                'src_file':grid.src_file
+                'src_files':grid.src_files
                 }
 
         if channel_name['tunnel'] + ' (A)' in channel_dict :

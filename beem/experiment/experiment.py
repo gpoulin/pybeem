@@ -6,7 +6,7 @@ class Experiment(object):
     """
 
     def __init__(self, pos_x = None, pos_y = None, sample = None, 
-            device = None, date = None, src_file = None):
+            device = None, date = None, src_files = None):
         """Store general data
 
         Kwargs:
@@ -23,7 +23,8 @@ class Experiment(object):
         self.sample = sample
         self.device = device
         self.date = date
-        self.src_file = src_file
+        self.src_files = src_files
+
 
 
 _use_pure_c=True

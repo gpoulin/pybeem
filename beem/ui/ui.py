@@ -15,21 +15,25 @@ slot = QtCore.pyqtSlot
 property = QtCore.pyqtProperty
 
 
-from ..io import grid_from_3ds
+from beem.io import grid_from_3ds
+from beem.experiment import Grid
 
 
 _pref = dict()
 
 
 def select_file(folder = None, filter = None, selected_filter = None):
-    filename = QtGui.QFileDialog.getOpenFileName(directory = folder,
+    filename = QtGui.QFileDialog.getOpenFileNames(directory = folder,
                         filter = filter, selectedFilter = selected_filter)
     return filename
 
 def open3ds(filename = None, folder = None):
     if filename == None:
         filename = select_file(folder=folder, filter=u'3ds (*.3ds)')
-    return grid_from_3ds(filename)
+        a=Grid()
+        for f in filename:
+           a=a + grid_from_3ds(f)
+    return a
 
 def find_config():
     if os.name == 'posix':
