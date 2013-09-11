@@ -52,25 +52,24 @@ PyInit__pure_c(void)
 
 static PyObject *bell_kaiser_v(PyObject *self, PyObject *args)
 {
-  PyObject *bias, *i_beem, *bias_array, *params, *params_array;
+  PyObject *bias, *i_beem, *params;
+  PyArrayObject *bias_array, *params_array;
   double *dparams, n;
   unsigned int l, n_barriers;
-  npy_intp dim;
 
   //Extract argument
   if (!PyArg_ParseTuple(args, "OdO", &bias, &n, &params)) return NULL;
-  bias_array = PyArray_FROM_OTF(bias, NPY_DOUBLE, NPY_IN_ARRAY);
-  params_array = PyArray_FROM_OTF(params, NPY_DOUBLE, NPY_IN_ARRAY);
+  bias_array = (PyArrayObject*) PyArray_FROM_OTF(bias, NPY_DOUBLE, NPY_ARRAY_CARRAY_RO);
+  params_array = (PyArrayObject*) PyArray_FROM_OTF(params, NPY_DOUBLE, NPY_ARRAY_CARRAY_RO);
 
 
   //Retrieve dimension of bias and number of barrier height
-  n_barriers=((int)PyArray_DIM(params_array, 0)-1)/2;
-  l=(int)PyArray_DIM(bias_array, 0);
+  n_barriers=((int)PyArray_SIZE(params_array)-1)/2;
+  l=(int)PyArray_SIZE(bias_array);
   dparams=(double*)PyArray_DATA(params_array);
 
   //Create an array to store the result
-  dim=(npy_intp)l;
-  i_beem=PyArray_EMPTY(1,&dim,NPY_DOUBLE,0);
+  i_beem=PyArray_EMPTY(PyArray_NDIM(bias_array),PyArray_SHAPE(bias_array),NPY_DOUBLE,0);
 
   //Do the calcul
   _bell_kaiser_v(l,(double*)PyArray_DATA(bias_array),
@@ -90,27 +89,25 @@ static PyObject *bell_kaiser_v(PyObject *self, PyObject *args)
 
 static PyObject *residu_bell_kaiser_v(PyObject *self, PyObject *args)
 {
-  PyObject *bias, *i_beem, *res, *i_beem_array, *bias_array, *params,
-           *params_array;
+  PyObject *bias, *i_beem, *res, *params;
+  PyArrayObject *i_beem_array, *bias_array, *params_array;
   double *dparams, n, *di_beem, *dres;
   int l, i, n_barriers;
-  npy_intp dim;
 
   //Extract parameters
   if (!PyArg_ParseTuple(args, "OOOd",&params, &bias, &i_beem, &n)) return NULL;
-  bias_array = PyArray_FROM_OTF(bias, NPY_DOUBLE, NPY_IN_ARRAY);
-  i_beem_array = PyArray_FROM_OTF(i_beem, NPY_DOUBLE, NPY_IN_ARRAY);
-  params_array = PyArray_FROM_OTF(params, NPY_DOUBLE, NPY_IN_ARRAY);
+  bias_array = (PyArrayObject*)PyArray_FROM_OTF(bias, NPY_DOUBLE, NPY_ARRAY_CARRAY_RO);
+  i_beem_array = (PyArrayObject*)PyArray_FROM_OTF(i_beem, NPY_DOUBLE, NPY_ARRAY_CARRAY_RO);
+  params_array = (PyArrayObject*)PyArray_FROM_OTF(params, NPY_DOUBLE, NPY_ARRAY_CARRAY_RO);
 
   //Get Data
-  l=(int)PyArray_DIM(bias_array, 0);
+  l=(int)PyArray_SIZE(bias_array);
   n_barriers=((int)PyArray_DIM(params_array, 0)-1)/2;
   dparams=(double*)PyArray_DATA(params_array);
   di_beem=(double*)PyArray_DATA(i_beem_array);
 
   //Create an array to store the result
-  dim=(npy_intp)l;
-  res=PyArray_EMPTY(1,&dim,NPY_DOUBLE,0);
+  res=PyArray_EMPTY(PyArray_NDIM(bias_array),PyArray_SHAPE(bias_array),NPY_DOUBLE,0);
   dres=(double*)PyArray_DATA(res);
 
 
