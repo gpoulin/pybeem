@@ -8,7 +8,7 @@ Contributors
 ------------
 
 ###Main developer
-  * Guillaume Poulin poulin.guillaume@gmail.com
+  * Guillaume Poulin
 
 Dependencies
 ------------
@@ -21,10 +21,10 @@ Dependencies
 
 ###For graphic interface
   * PyQt >=4.9
-  * PyQtGraph >=0.9.8
+  * [PyQtGraph](http://pyqtgraph.org) >=0.9.8
 
 ###For interactive console
-  * IPython
+  * IPython >= 1.0.0
 
 
 Install
