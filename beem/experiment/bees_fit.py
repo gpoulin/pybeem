@@ -85,25 +85,59 @@ class BEESFit(object):
                         np.r_[self.noise, self.barrier_height,self.trans_a]);
         return None
 
-    @property
-    def pos_x(self):
+
+    def _wrap_bees(self,attribute):
         if not(self.data):
             return None
-        pos_x = np.array([t.pos_x for t in self.data])
-        if all(pos_x == pos_x[0]):
-            return pos_x[0]
+        att =  np.array([t.__getattribute__(attribute) for t in self.data])
+        if all(att == att[0]):
+            return att[0]
         else:
             return None
 
     @property
+    def date(self):
+        return self._wrap_bees('date')
+
+    @property
+    def device(self):
+        return self._wrap_bees('device')
+
+    @property
+    def sample(self):
+        return self._wrap_bees('sample')
+
+    @property
+    def x_index(self):
+        return self._wrap_bees('x_index')
+
+    @property
+    def y_index(self):
+        return self._wrap_bees('y_index')
+
+    @property
+    def pos_x(self):
+        return self._wrap_bees('pos_x')
+        
+    @property
     def pos_y(self):
-        if not(self.data):
-            return None
-        pos_x = np.array([t.pos_y for t in self.data])
-        if all(pos_x == pos_x[0]):
-            return pos_x[0]
-        else:
-            return None
+        return self._wrap_bees('pos_y')
+        
+    @property
+    def mode(self):
+        return self._wrap_bees('mode')
+        
+    @property
+    def number(self):
+        return self._wrap_bees('number')
+        
+    @property
+    def pass_number(self):
+        return self._wrap_bees('pass_number')
+        
+    @property
+    def pos_y(self):
+        return self._wrap_bees('pos_y')
 
     @property
     def i_beem(self):
@@ -137,8 +171,32 @@ class BEESFit(object):
         return i_tunnel
 
     @property
+    def pos_z(self):
+        if not(self.data):
+            return None
+
+        if len(self.data)>1:
+            combined=self.combine([t.pos_z for t in self.data])
+        else:
+            combined=self.data[0].pos_z
+
+        if self.filter==None:
+            pos_z=combined
+        else:
+            pos_z = self.filter(combined)
+        return pos_z
+
+    @property
     def trans_r(self):
+        if self.trans_a[0]==None:
+            return [None]
         return self.trans_a/np.mean(self.i_tunnel)
+
+    @property
+    def trans_r_err(self):
+        if self.trans_a_err[0]==None:
+            return [None]
+        return self.trans_a_err/np.mean(self.i_tunnel)
 
     def set_id(self):
         self.id=BEESFitID()
