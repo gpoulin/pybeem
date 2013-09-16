@@ -58,7 +58,7 @@ def grid_from_3ds(filename, channel={}):
         elif param=='Channels':
             channel_list = [x.strip() for x in value.strip('"').split(';')]
 
-        elif param=='Date':
+        elif param=='Date' or param=='End time':
             grid.date = datetime.datetime.strptime(value.strip('"'),
                                                    '%d.%m.%Y %H:%M:%S')
 

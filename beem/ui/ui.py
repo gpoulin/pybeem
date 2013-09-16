@@ -22,17 +22,19 @@ from beem.experiment import Grid
 _pref = dict()
 
 
-def select_file(folder = None, filter = None, selected_filter = None):
+def select_file(folder = None, filter = None):
     filename = QtGui.QFileDialog.getOpenFileNames(directory = folder,
-                        filter = filter, selectedFilter = selected_filter)
+                        filter = filter)
     return filename
 
 def open3ds(filename = None, folder = None):
     if filename == None:
         filename = select_file(folder=folder, filter=u'3ds (*.3ds)')
-        a=Grid()
         for f in filename:
-           a=a + grid_from_3ds(f)
+            try:
+                a = a + grid_from_3ds(f)
+            except:
+                a = grid_from_3ds(f)
     return a
 
 def find_config():

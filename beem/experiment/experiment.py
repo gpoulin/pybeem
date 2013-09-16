@@ -2,7 +2,6 @@ import numpy as np
 import warnings
 class Experiment(object):
     """Class to store general data about an experiment
-
     """
 
     def __init__(self, pos_x = None, pos_y = None, sample = None, 

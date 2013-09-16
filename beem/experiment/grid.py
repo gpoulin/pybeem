@@ -7,7 +7,7 @@ from copy import copy
 class Grid(Experiment):
 
     def __init__(self,**kwd):
-        super(Grid,self).__init__(**kwd)
+        super().__init__(**kwd)
         self.size_x = None
         self.size_y = None
         self.num_x = None
@@ -26,6 +26,7 @@ class Grid(Experiment):
         ret=copy(self)
         ret.bees+=other.bees
         ret.beesfit+=other.beesfit
+        ret.src_files+=other.src_files
         
         return ret
 
@@ -76,8 +77,8 @@ class Grid(Experiment):
                 pass
             else:
                 l.sort(key=lambda x:x.date)
-                for i in range(2,len(l)):
-                    l[i].pass_number=i
+                for i in range(2,len(l)+1):
+                    l[i-1].pass_number=i
 
     def init_grid(self):
         self.set_coord()
