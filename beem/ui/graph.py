@@ -1,9 +1,8 @@
-#!/usr/bin/python3
 """Module that implement all plotting with matplotlib
 """
 
 import numpy as np
-import scipy as sp
+from scipy.special import erfinv
 import matplotlib.pyplot as mpl
 
 def dualplot(bees,**kwds):
@@ -15,11 +14,20 @@ def dualplot(bees,**kwds):
     mpl.ylabel('R (eV$^{-1}$)')
     return h, c
 
-def contourDual(bees,bins=6,range=None, bh_index=0,**kwds):
+def contourplot(bees, bins=None ,range=None, bh_index=0,**kwds):
     bh=np.abs([x.barrier_height[bh_index] for x in bees])
     r=[x.trans_r[bh_index] for x in bees]
+    
     if range!=None:
         range=[range[1],range[0]]
+    else:
+        mb=np.mean(bh)
+        sb=np.std(bh)
+        r1=min(np.percentile(r,98),np.mean(r)+3*np.std(r))
+        range=[[0,r1],[mb-3*sb,mb+3*sb]]
+
+    if bins==None:
+        bins=max(len(bees)/300,6)
     H,X,Y=np.histogram2d(r,bh,bins=bins,range=range)
     extent = [Y[0], Y[-1], X[0], X[-1]]
     CS1=mpl.contourf(H,200,extent=extent,**kwds)
@@ -31,8 +39,8 @@ def contourDual(bees,bins=6,range=None, bh_index=0,**kwds):
     return (CS1,c)
 
 def normplot(x,*arg,**kwarg):
-    y=sp.special.erfinv(np.linspace(-1,1,len(x)+2)[1:-1:])
-    sx=np.sort(x)
+    y=erfinv(np.linspace(-1,1,len(x)+2)[1:-1:])
+    sx=np.sort(x,axis=None)
     mpl.plot(sx,y,*arg,**kwarg)
 
     p = np.array([0.001, 0.003, 0.01, 0.02, 0.05, 0.10, 0.25, 0.5, 0.75, 0.90,
@@ -42,15 +50,12 @@ def normplot(x,*arg,**kwarg):
                       '0.50', '0.75','0.90','0.95','0.98','0.99','0.997',
                       '0.999'])
 
-    position=sp.special.erfinv(p*2-1)
+    position=erfinv(p*2-1)
 
     mpl.yticks(position,label)
     mpl.grid()
 
 def cdfplot(x,*arg,**kwarg):
     y=np.linspace(0,1,len(x))
-    sx=np.sort(x)
+    sx=np.sort(x,axis=None)
     mpl.plot(sx,y,*arg,**kwarg)
-
-if __name__ == "__main__":
-    pass

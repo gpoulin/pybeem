@@ -17,6 +17,7 @@ property = QtCore.pyqtProperty
 
 from beem.io import grid_from_3ds
 from beem.experiment import Grid
+from beem.ui.graph import contourplot
 
 
 _pref = dict()
@@ -24,20 +25,40 @@ _pref = dict()
 
 def select_file(folder = None, filter = None):
     filename = QtGui.QFileDialog.getOpenFileNames(directory = folder,
-                        filter = filter)
+            filter = filter)
     return filename
 
 def open3ds(filename = None, folder = None):
+    """Return a Grid object from 3ds files
+    """
     if filename == None:
-        filename = select_file(folder=folder, filter=u'3ds (*.3ds)')
-        for f in filename:
-            try:
-                a = a + grid_from_3ds(f)
-            except:
-                a = grid_from_3ds(f)
+        filename = select_file(folder = folder, filter = '3ds (*.3ds)')
+        if len(filename)==0:
+            return None
+    for f in filename:
+        try:
+            a = a + grid_from_3ds(f)
+        except NameError:
+            a = grid_from_3ds(f)
     return a
 
+def fast_analysis(filename = None):
+    """Do the default analysis on 3ds files
+    """
+    grid=open3ds(filename)
+    if grid==None:
+        return None
+    grid.normal_fit()
+    grid.update_dict()
+    grid.fit()
+    contourplot(grid.extract_good())
+    return grid
+
+
 def find_config():
+    """Return the location of the config and 
+    create folder to store it if needed
+    """
     if os.name == 'posix':
         folder = os.path.expanduser('~/.pybeem')
     elif os.name == 'nt':
@@ -64,6 +85,3 @@ def load_pref(filename = None):
         fid = open(filename,'r')
         _pref.update(json.load(fid))
         fid.close()
-
-def main(arg):
-    pass
