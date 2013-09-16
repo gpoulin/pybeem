@@ -15,23 +15,20 @@ def dualplot(bees,**kwds):
     mpl.ylabel('R (eV$^{-1}$)')
     return h, c
 
-def contourDual(bees, N=6, bins=12, range=None, **kwds):
-    bh = np.abs([x.barrier_height[0] for x in bees])
-    r=[x.trans_r[0] for x in bees]
-    if range is not None:
-        range = [range[1], range[0]]
-    H,X,Y = np.histogram2d(r,bh,bins=bins,range=range)
+def contourDual(bees,bins=6,range=None, bh_index=0,**kwds):
+    bh=np.abs([x.barrier_height[bh_index] for x in bees])
+    r=[x.trans_r[bh_index] for x in bees]
+    if range!=None:
+        range=[range[1],range[0]]
+    H,X,Y=np.histogram2d(r,bh,bins=bins,range=range)
     extent = [Y[0], Y[-1], X[0], X[-1]]
-    if N == None:
-        N = int(H.max()) - 1
-    CS1 = mpl.contourf(H, N, extent=extent, extend='min', **kwds)
-    c = mpl.colorbar()
-    CS2 = mpl.contour(H, levels=CS1.levels, extent=extent, extend='min', colors='k')
-    c.add_lines(CS2)
+    CS1=mpl.contourf(H,200,extent=extent,**kwds)
+    c=mpl.colorbar(CS1)
+    c.locator=mpl.MaxNLocator(integer=True)
+    c.update_ticks()
     mpl.xlabel('$\phi$ (eV)')
     mpl.ylabel('R (eV$^{-1}$)')
-    return CS1, c
-
+    return (CS1,c)
 
 def normplot(x,*arg,**kwarg):
     y=sp.special.erfinv(np.linspace(-1,1,len(x)+2)[1:-1:])
