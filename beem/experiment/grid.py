@@ -42,12 +42,33 @@ class Grid(Experiment):
             b.n=n
 
 
-    def fit(self):
+    def fit(self,threads=1):
         from time import time
-        t=time()
-        for x in self.beesfit:
-            x.fit_update()
-        print(time()-t)
+        t1=time()
+        if threads==1:
+            for x in self.beesfit:
+                x.fit_update()
+        else:
+            if threads==-1:
+                p=mp.Pool()
+            else:
+                p=mp.Pool(threads)
+            ## unlink the bees to prevent to pickle to big data
+            for x in self.beesfit:
+                x.parent = None
+                for y in x.data:
+                    y.parent = None
+            beesfit=p.map(fit_para,self.beesfit)
+            ## relink the bees
+            for x in self.beesfit:
+                x.parent = self
+                for y in x.data:
+                    y.parent = self
+            p.close()
+            for i in range(len(beesfit)):
+                self.beesfit[i].update(beesfit[i])
+        print(time()-t1)
+
 
     def set_coord(self):
         self.xs = np.unique(filter(lambda x: not(x==None),
@@ -107,3 +128,6 @@ class Grid(Experiment):
         fit=np.array(self.beesfit)
         r=np.array([x.r_squared for x in fit])
         return fit[np.logical_and(r>r_squared,r<1)]
+
+def fit_para(x):
+    return x.fit()
