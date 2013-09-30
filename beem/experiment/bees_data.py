@@ -5,7 +5,7 @@ class BEESData(Experiment):
     def __init__(self, bias=None, i_tunnel=None, i_beem=None,
                  pos_z=None, mode=MODE['fwd'], number=1, **kwds):
 
-        super().__init__(**kwds)
+        super(BEESData, self).__init__(**kwds)
         self.bias = bias
         self.i_tunnel = i_tunnel
         self.i_beem = i_beem

@@ -7,7 +7,7 @@ from copy import copy
 class Grid(Experiment):
 
     def __init__(self,**kwd):
-        super().__init__(**kwd)
+        super(Grid,self).__init__(**kwd)
         self.size_x = None
         self.size_y = None
         self.num_x = None

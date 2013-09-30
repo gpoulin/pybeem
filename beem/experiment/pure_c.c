@@ -31,7 +31,8 @@ static PyMethodDef module_methods[] = {
   {NULL,NULL,0,NULL}
 };
 
-
+#if PY_MAJOR_VERSION >= 3
+#define IS_PY3K
 static struct PyModuleDef _pure_c_module = {
    PyModuleDef_HEAD_INIT,
    "_pure_c",   /* name of module */
@@ -49,6 +50,16 @@ PyInit__pure_c(void)
     return PyModule_Create(&_pure_c_module);
 }
 
+#else
+
+PyMODINIT_FUNC init_pure_c(void)
+{
+  PyObject *m = Py_InitModule3("_pure_c", module_methods, module_docstring);
+  if (m==NULL)
+    return;
+  import_array()
+}
+#endif
 
 static PyObject *bell_kaiser_v(PyObject *self, PyObject *args)
 {
